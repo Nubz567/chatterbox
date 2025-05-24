@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Chatterbox</title>
+    <link rel="stylesheet" href="style.css"> <!-- You can create specific styles later -->
+</head>
+<body class="has-fixed-logo">
+    <div class="site-logo">
+        <a href="/"><img src="/Chatterboxlogo/chatterboxlogo.png" alt="Chatterbox Logo"></a>
+    </div>
+
+    <div class="login-container">
+        <h1>Login to Chatterbox</h1>
+        
+        <div id="login-error-message" class="error-message"></div>
+        <div id="login-success-message" class="success-message"></div>
+
+        <form id="login-form" action="/login" method="POST">
+            <div>
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div>
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit">Login</button>
+        </form>
+        <p style="text-align: center; margin-top: 15px;">
+            Don't have an account? <a href="/register">Register here</a>
+        </p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const errorDiv = document.getElementById('login-error-message');
+            const successDiv = document.getElementById('login-success-message');
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            const error = urlParams.get('error');
+            const success = urlParams.get('success');
+
+            if (error) {
+                let messageText = 'An unknown error occurred.';
+                if (error === 'missing_credentials') { 
+                    messageText = 'Please enter both email and password.';
+                } else if (error === 'invalid_credentials') {
+                    messageText = 'Invalid email or password.';
+                } else if (error === 'server_error') { 
+                    messageText = 'Login failed due to a server issue. Please try again later.';
+                }
+                errorDiv.textContent = messageText;
+                errorDiv.style.display = 'block';
+                successDiv.style.display = 'none';
+            } else if (success) {
+                if (success === 'registered') {
+                    messageText = 'Registration successful! Please login.';
+                    successDiv.textContent = messageText;
+                    successDiv.style.display = 'block';
+                    errorDiv.style.display = 'none';
+                }
+            }
+        });
+    </script>
+
+    <script src="/login.js"></script>
+    <script src="/help.js"></script>
+
+    <div class="version-display">Beta</div>
+</body>
+</html>

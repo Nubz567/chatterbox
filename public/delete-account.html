@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delete Account - Chatterbox</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body class="has-fixed-logo">
+    <div class="site-logo">
+        <a href="/groups"><img src="/Chatterboxlogo/chatterboxlogo.png" alt="Chatterbox Logo"></a>
+    </div>
+
+    <div class="page-container">
+        <div class="auth-container">
+            <h1>Delete Account</h1>
+            <div class="warning-message">
+                <p>⚠️ Warning: This action cannot be undone. All your data will be permanently deleted.</p>
+            </div>
+            <form id="delete-account-form">
+                <div>
+                    <label for="password">Enter your password to confirm:</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="delete-button">Delete Account</button>
+                <p id="delete-message" class="message-display"></p>
+            </form>
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="/groups" id="back-link-after-delete" class="back-link">← Back to Groups</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('delete-account-form').addEventListener('submit', async (e) => {
+            console.log('Delete account form submission initiated.');
+            e.preventDefault();
+            const password = document.getElementById('password').value;
+            const messageElement = document.getElementById('delete-message');
+            console.log('Password entered:', password ? '(provided)' : '(empty)');
+
+            try {
+                console.log('Attempting to fetch /delete-account POST');
+                const response = await fetch('/delete-account', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        password
+                    })
+                });
+                console.log('Fetch response received:', response.status);
+
+                const data = await response.json();
+                console.log('Response data:', data);
+                messageElement.textContent = data.message;
+                messageElement.style.color = data.success ? 'green' : 'red';
+                messageElement.style.display = 'block';
+
+                if (data.success) {
+                    // Change the back link
+                    const backLink = document.getElementById('back-link-after-delete');
+                    if (backLink) {
+                        backLink.textContent = '← Back to Login';
+                        backLink.href = '/';
+                    }
+                    // Redirect to login page after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                }
+            } catch (error) {
+                messageElement.textContent = 'An error occurred. Please try again.';
+                messageElement.style.color = 'red';
+                messageElement.style.display = 'block';
+            }
+        });
+    </script>
+
+    <style>
+        .warning-message {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .delete-button {
+            background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+        }
+
+        .delete-button:hover {
+            background: linear-gradient(135deg, #c0392b, #a93226) !important;
+        }
+
+        body.dark-theme .warning-message {
+            background: linear-gradient(135deg, #c62828, #b71c1c);
+            color: #ffffff;
+        }
+    </style>
+
+    <div class="version-display">Beta</div>
+</body>
+</html> 

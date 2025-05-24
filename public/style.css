@@ -1,0 +1,1864 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    /* padding: 0; Removed as logo will be top-left */
+    background: #ffffff; /* Light mode background: white */
+    color: #2c3e50; /* Light mode text: very dark grey */
+    /* display: flex; Might conflict with top-left logo, review page by page */
+    /* justify-content: center; */
+    /* align-items: flex-start; */
+    min-height: 100vh;
+    /* padding-top: 20px; Removed for logo */
+    box-sizing: border-box;
+    position: relative; /* For absolute positioning of logo if needed, or fixed */
+}
+
+/* --- Logo Styles --- */
+.site-logo {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 1001; /* Ensure it's above most other content */
+    background-color: transparent !important; /* Ensure no accidental background */
+    padding: 0; /* Ensure no accidental padding adds to background effect */
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+    /* border-radius: 5px; */
+}
+
+.site-logo img {
+    height: 240px; /* Increased from 80px (3x) */
+    width: auto;  /* Maintain aspect ratio */
+    display: block;
+}
+
+/* Adjust body padding on pages to prevent content from going under the logo */
+body.has-fixed-logo {
+    padding-top: 260px; /* Increased from 100px (240px logo + 20px margin) */
+    position: relative; /* Added to contain absolute positioned logo */
+    min-height: 100vh;
+}
+
+/* Ensure the page container has proper positioning */
+.page-container {
+    position: relative;
+    z-index: 1;
+}
+
+/* --- Version Display Styles --- */
+.version-display {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    font-size: 0.8em;
+    color: white;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    padding: 4px 8px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 1000; /* Below logo but above most other content */
+}
+
+/* --- Login Page Styles --- */
+.login-container {
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 20px;
+    background: linear-gradient(145deg, #ffffff, #f0f4f8);
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.login-container h1 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 20px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.login-container label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+.login-container input[type="email"],
+.login-container input[type="password"] {
+    width: calc(100% - 22px);
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 2px solid #e0e6ed;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.login-container input[type="email"]:focus,
+.login-container input[type="password"]:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 8px rgba(52, 152, 219, 0.3);
+    outline: none;
+}
+
+.login-container button[type="submit"],
+#message-form button {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.login-container button[type="submit"]:hover,
+#message-form button:hover {
+    background: linear-gradient(135deg, #2980b9, #2573a7);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+
+/* --- Chat Page Styles --- */
+#chat-container {
+    max-width: 600px;
+    margin: 20px auto;
+    background: linear-gradient(145deg, #ffffff, #f0f4f8);
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#chat-container h1 { /* If you decide to move h1 inside chat-container */
+    text-align: center;
+    color: #333;
+    margin-top: 0; /* Remove default top margin if h1 is inside a container */
+}
+
+#messages {
+    list-style-type: none;
+    padding: 10px;
+    margin: 0 0 20px 0;
+    height: 300px;
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    border: 1px solid #e0e6ed;
+    display: flex;
+    flex-direction: column;
+}
+
+#messages li {
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    max-width: 75%;
+    word-wrap: break-word;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); /* Subtle shadow for depth */
+    transition: all 0.2s ease-in-out; /* Smooth transition for hover effects */
+}
+
+#messages li:hover {
+    transform: translateY(-1px); /* Slight lift on hover */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08); /* Enhanced shadow on hover */
+}
+
+#messages li.other-message {
+    /* background: linear-gradient(135deg, #e3f2fd, #bbdefb); Old blue */
+    background: linear-gradient(135deg, #f0f2f5, #e6e9ed); /* Softer, modern grey */
+    color: #333; /* Darker text for better contrast on light grey */
+    margin-right: auto;
+    align-self: flex-start;
+    border-radius: 15px 15px 15px 5px; /* More bubbly */
+}
+
+#messages li.my-message {
+    /* background: linear-gradient(135deg, #e8f5e9, #c8e6c9); Old green */
+    background: linear-gradient(135deg, #007bff, #0056b3); /* Vibrant blue gradient */
+    color: #ffffff; /* White text for contrast on blue */
+    margin-left: auto;
+    align-self: flex-end;
+    border-radius: 15px 15px 5px 15px; /* More bubbly */
+}
+
+#message-form {
+    display: flex;
+}
+
+#message-input {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px 0 0 4px; /* Rounded left corners */
+    margin-right: -1px; /* Overlap border with button */
+}
+
+#message-form button { /* Already styled above, but ensures it applies if not caught by general rule */
+    border-radius: 0 4px 4px 0;
+    width: auto; /* Override width: 100% from login button style */
+    padding: 10px 15px;
+}
+
+/* Style for the logout button area on chat page */
+/* Assuming the structure in index.html for logout button:
+   <div style="display: flex; justify-content: space-between; align-items: center;">
+       <h1>...</h1>
+       <form action="/logout" method="POST" id="logout-form">...</form>
+   </div>
+*/
+#logout-form button {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+#logout-form button:hover {
+    background: linear-gradient(135deg, #c0392b, #a93226);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.timestamp {
+    /* color: #03254eb9; Old color */
+    color: rgba(0, 0, 0, 0.5); /* Softer, less prominent timestamp for other messages */
+    font-size: 0.8em; /* Slightly smaller font */
+    margin-right: 5px;
+    display: block; /* Make timestamp appear on its own line */
+    margin-top: 3px; /* Add some space above timestamp */
+}
+
+#messages li.my-message .timestamp {
+    color: rgba(255, 255, 255, 0.7); /* Lighter timestamp for my messages */
+}
+
+/* --- User List Styles --- */
+/* Ensure #chat-app-container is the flex container for sidebar and main content */
+#chat-app-container { /* Renamed from #app-container if that was a typo, or adjust HTML */
+    display: flex;
+    gap: 20px;
+    max-width: 1000px; /* Increased max-width for more space */
+    margin: 20px auto;
+    align-items: flex-start;
+    padding: 10px; /* Add some padding around the whole app */
+    background-color: #e0e0e0; /* Light grey background for the app area */
+    border-radius: 8px;
+}
+
+#sidebar {
+    flex-basis: 250px; /* Give sidebar a fixed base width */
+    flex-shrink: 0;
+    /* user-list-container styles are mostly fine, ensure it's within sidebar */
+}
+
+#main-content-area {
+    flex-grow: 1; /* Takes up remaining space */
+    display: flex; /* This will allow its children (chat windows) to be managed */
+    flex-direction: column; /* Stack chat windows if multiple were somehow visible */
+    min-width: 0; /* Important for flex children */
+    background-color: #ffffff; /* White background for the content area */
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    /* padding: 15px; Combined into .chat-window padding */
+}
+
+/* Generic .chat-window styles - applies to group and PMs */
+.chat-window {
+    display: none; /* Initially hidden, JS will set display: flex for active one */
+    flex-direction: column; /* Children (title, messages, form) stack vertically */
+    height: calc(100vh - 100px); /* Example: Adjust based on header/footer or desired height */
+                               /* Or make it flex-grow if #main-content-area has a fixed height */
+    max-height: 700px; /* Max height before internal scrollbars are more prominent */
+    width: 100%; /* Take full width of parent #main-content-area */
+    background: linear-gradient(145deg, #ffffff, #f0f4f8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px; /* Keep consistent rounding */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    /* background-color: #fff; /* Moved to #main-content-area, chat windows are transparent or specific color */
+    /* box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); */ /* Shadow on main-content-area is likely enough */
+    /* padding: 20px; */ /* Add padding inside */
+    /* position: relative; */ /* For title, handled by .chat-title-bar now */
+}
+
+.chat-window.active-chat { /* JS sets this class and display:flex */
+    display: flex; /* Make the active chat window visible and flex container */
+}
+
+/* Title bar for all chat windows */
+.chat-title-bar {
+    padding: 12px 15px;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+    border-radius: 8px 8px 0 0; /* Rounded top corners */
+    text-align: center;
+}
+
+/* #chat-area is now #group-chat-area with .chat-window class */
+/* Most specific styles for #group-chat-area if needed can go here, */
+/* but .chat-window and .chat-title-bar should cover most. */
+#group-chat-area {
+    /* Specific styles for group chat if it differs from a generic .chat-window */
+}
+
+
+/* Styles for message lists (applies to group #messages and .pm-messages) */
+.messages { /* Common class for #messages and .pm-messages */
+    list-style-type: none;
+    padding: 15px;
+    margin: 0;
+    flex-grow: 1; /* Make message area take available space */
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    border: 1px solid #e0e6ed;
+    display: flex;
+    flex-direction: column;
+    /* border: 1px solid #eee; /* Border on .chat-window is enough */
+}
+
+/* #messages li styling (already good, confirm it applies via .messages li if needed) */
+.messages li { /* General styling for all message items */
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    max-width: 80%; /* Slightly more max-width */
+    word-wrap: break-word;
+    line-height: 1.4;
+}
+
+.messages li.other-message {
+    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+    margin-right: auto;
+    align-self: flex-start;
+}
+
+.messages li.my-message {
+    background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+    color: #2e7d32;
+    margin-left: auto;
+    align-self: flex-end;
+}
+
+
+/* Input forms (applies to group #message-form and .pm-form) */
+/* General form styling */
+#message-form, .pm-form {
+    display: flex;
+    padding: 10px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    background: linear-gradient(145deg, #f0f4f8, #e0e6ed);
+    border-radius: 0 0 8px 8px; /* Rounded bottom corners */
+}
+
+#message-input, .pm-form input[type="text"] {
+    flex-grow: 1;
+    padding: 10px;
+    border: 2px solid #e0e6ed;
+    border-radius: 4px 0 0 4px;
+    margin-right: -1px; 
+    background: rgba(255, 255, 255, 0.9);
+    transition: all 0.3s ease;
+}
+
+#message-input:focus, .pm-form input[type="text"]:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 8px rgba(52, 152, 219, 0.3);
+    outline: none;
+}
+
+#message-form button, .pm-form button {
+    border-radius: 0 4px 4px 0;
+    width: auto; 
+    padding: 10px 15px;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+#message-form button:hover, .pm-form button:hover {
+    background: linear-gradient(135deg, #2980b9, #2573a7);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+
+/* PM Specifics */
+#pm-chat-windows-container {
+    width: 100%; /* PM container takes full width of main-content-area */
+    height: 100%; /* And full height */
+    display: contents; /* Behaves like its children are direct children of parent for flex purposes */
+                       /* This is a bit advanced; simpler is to have JS manage one PM window visible at a time */
+                       /* OR #pm-chat-windows-container IS the flex container, and JS adds .active-chat to one PM window */
+                       /* Let's assume JS makes only ONE .chat-window (group or PM) active at a time in #main-content-area */
+}
+
+/* .private-chat class is already on PM windows (along with .chat-window) */
+/* So, .chat-window styles will apply. Add specific overrides if needed. */
+.private-chat .chat-title-bar {
+    background: linear-gradient(135deg, #ffe0b2, #ffcc80);
+    color: #856404;
+}
+
+/* Removing old PM styles if they conflict or are redundant */
+/* Search for and remove or comment out: */
+/* #private-chats-container { ... } */
+/* .private-chat-window { ... } */ /* Replaced by .chat-window.private-chat */
+/* .pm-header { ... } */ /* Replaced by .chat-title-bar */
+/* .pm-header .pm-close-btn { ... } */ /* Close button not implemented in this iteration */
+/* .pm-messages { ... } */ /* Now inherits from .messages */
+/* .pm-messages li { ... } */ /* Now inherits from .messages li */
+/* .pm-messages li.my-pm-message { ... } */ /* Now .my-message */
+/* .pm-message-form { ... } */ /* Now .pm-form */
+/* .pm-message-form .pm-message-input { ... } */ /* Now .pm-form input */
+/* .pm-message-form button { ... } */ /* Now .pm-form button */
+
+#user-list-container {
+    /* For dynamic width based on content: */
+    min-width: 180px;  /* Set a minimum reasonable width */
+    max-width: 300px;  /* Optional: Set a maximum if you don't want it too wide */
+    width: auto;       /* Allow it to size to content, up to max-width */
+    flex-shrink: 0;    /* Prevent it from shrinking if chat area wants more space */
+    
+    /* For dynamic height: */
+    height: fit-content; /* This should already allow it to grow/shrink with user list items */
+    max-height: 400px;   /* Optional: if you want a scrollbar after a certain number of users */
+    overflow-y: auto;    /* Add scrollbar if max-height is reached */
+
+    padding: 15px;
+    background: linear-gradient(145deg, #ffffff, #f0f4f8);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#user-list-container h2 {
+    margin-top: 0;
+    font-size: 1.2em;
+    color: #333;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+#user-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    word-break: break-all; /* Helps break long emails if they exceed container width */
+}
+
+#user-list li {
+    padding: 6px 0;
+    color: #555;
+    border-bottom: 1px solid #eee;
+    /* white-space: nowrap; */ /* Uncomment if you prefer no wrapping and want horizontal scroll for very long emails */
+    /* overflow: hidden;   */ /* Uncomment with nowrap if you want to hide overflow */
+    /* text-overflow: ellipsis; */ /* Uncomment with nowrap & overflow:hidden for '...' */
+}
+
+#user-list li:last-child {
+    border-bottom: none;
+}
+
+#user-list li.can-pm {
+    cursor: pointer;
+    font-weight: bold; /* Make them look more interactive */
+}
+
+#user-list li.can-pm:hover {
+    color: #3498db;
+    background: rgba(52, 152, 219, 0.1);
+    border-radius: 4px;
+}
+
+#user-list li.cannot-pm {
+    color: #999; /* Grey out self in user list if not clickable */
+    cursor: default;
+}
+
+#user-list li.group-chat-option {
+    font-weight: bold;
+    color: #27ae60;
+    cursor: pointer;
+    padding-bottom: 5px;
+    margin-bottom: 5px; /* Add some space below it */
+    border-bottom: 1px dashed #ccc; /* Optional separator */
+    background: rgba(39, 174, 96, 0.1);
+    border-radius: 4px;
+}
+
+#user-list li.group-chat-option:hover {
+    color: #219a52;
+    background: rgba(39, 174, 96, 0.2);
+}
+
+/* --- Error Message Styles --- */
+.error-message {
+    background: linear-gradient(135deg, #ffebee, #ffcdd2);
+    color: #c62828;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ef9a9a;
+    border-radius: 4px;
+    display: none; /* Hidden by default */
+    text-align: center;
+}
+
+/* --- Typing Indicator Styles --- */
+#typing-indicator {
+    padding: 5px 10px;
+    font-style: italic;
+    color: #777;
+    height: 2em; /* Give it some fixed height to prevent layout jumps */
+    background-color: #f0f0f0; /* Match form/title background */
+    text-align: center;
+    border-top: 1px solid #ddd; /* Separator like form */
+    border-radius: 0 0 8px 8px; /* If form is not visible, this will be bottom */
+}
+
+/* Ensure typing indicator is only at the bottom of the active group chat */
+#group-chat-area #typing-indicator {
+    /* Styles above are fine */
+}
+/* PM windows currently don't have a dedicated typing indicator in this JS version */
+/* If added, it would need its own HTML element and styling within each PM window */
+
+.success-message {
+    background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+    color: #2e7d32;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #a5d6a7;
+    border-radius: 4px;
+    display: none; /* Hidden by default */
+    text-align: center;
+}
+
+/* Optional: if you want common base for error and success */
+.message-display { /* Generic class for messages if needed, used by register.html */
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    display: none; /* Hidden by default */
+    text-align: center;
+}
+
+#messages li a { /* Style for links within message list items */
+    color: #007bff; /* Standard link blue */
+    text-decoration: underline;
+}
+
+#messages li a:hover {
+    color: #0056b3; /* Darker blue on hover */
+}
+
+/* --- Media Queries for Responsiveness --- */
+
+/* Tablets and Larger Phones (e.g., landscape phones) */
+@media (max-width: 768px) {
+    body {
+        padding-top: 10px; /* Reduce top padding */
+    }
+
+    #chat-app-container {
+        flex-direction: column; /* Stack sidebar and main content */
+        margin: 10px auto;
+        padding: 5px;
+        gap: 10px;
+    }
+
+    #sidebar {
+        flex-basis: auto; /* Allow sidebar to take full width if needed */
+        width: 100%;
+        max-height: 200px; /* Limit height for user list */
+        overflow-y: auto;
+    }
+
+    #user-list-container h2 {
+        margin-top: 0;
+        font-size: 1.1em;
+    }
+
+    #user-list li {
+        padding: 8px 10px;
+    }
+
+    #main-content-area {
+        width: 100%;
+    }
+
+    .chat-window {
+        height: calc(100vh - 280px); /* Adjust height considering stacked layout */
+        /* May need further adjustment based on actual header/footer/sidebar heights */
+    }
+
+    #messages, .messages {
+        padding: 10px;
+        height: auto; /* Let it grow, .chat-window has overflow */
+    }
+
+    #messages li, .messages li {
+        max-width: 90%; /* Allow messages to take a bit more width */
+    }
+
+    .login-container, .auth-container {
+        margin: 20px auto;
+        padding: 15px;
+    }
+
+    #message-input, .pm-form input[type="text"] {
+        padding: 12px; /* Slightly larger tap target */
+    }
+
+    #message-form button, .pm-form button {
+        padding: 12px 15px;
+    }
+}
+
+/* Smaller Phones */
+@media (max-width: 480px) {
+    body {
+        font-size: 14px; /* Adjust base font size for smaller screens */
+    }
+
+    #chat-app-container {
+        margin: 5px auto;
+        border-radius: 0; /* Full width, no radius */
+    }
+
+    .chat-window {
+        height: calc(100vh - 250px); /* Fine-tune height */
+        border-radius: 0;
+    }
+
+    .chat-title-bar {
+        padding: 8px 10px;
+        font-size: 1em;
+    }
+
+    #messages li, .messages li {
+        padding: 6px 10px;
+        font-size: 0.95em;
+    }
+
+    .login-container, .auth-container {
+        margin: 10px;
+        padding: 10px;
+        box-shadow: none; /* Remove shadow for simpler look */
+        border-radius: 0;
+    }
+
+    .login-container input[type="email"],
+    .login-container input[type="password"],
+    .auth-container input[type="email"],
+    .auth-container input[type="password"] {
+        padding: 12px;
+    }
+
+    #logout-form button {
+        padding: 6px 10px;
+        font-size: 0.9em;
+    }
+}
+
+/* --- Emoji Panel Styles --- */
+#emoji-button {
+    padding: 0 10px;
+    font-size: 1.2em;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    margin-left: 5px; /* Space between send button and emoji button */
+    border-radius: 4px;
+    line-height: normal; /* Ensure proper vertical alignment */
+}
+
+#emoji-button:hover {
+    background-color: #e9e9e9;
+}
+
+.emoji-panel {
+    background: linear-gradient(145deg, #ffffff, #f0f4f8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
+    gap: 8px;
+    width: calc(100% - 20px); /* Take full width of sidebar, accounting for its padding */
+    margin-top: 15px; /* Space between user list and emoji panel */
+    max-height: 200px; /* Adjust max height as it's now within the sidebar */
+    overflow-y: auto;
+}
+
+.emoji-panel.hidden {
+    display: none;
+}
+
+.emoji-panel span {
+    padding: 5px;
+    font-size: 1.5em;
+    cursor: pointer;
+    text-align: center;
+    border-radius: 4px;
+}
+
+.emoji-panel span:hover {
+    background: rgba(52, 152, 219, 0.1);
+    transform: scale(1.1);
+    transition: all 0.2s ease;
+}
+
+/* Adjust media queries if emoji panel needs specific changes */
+@media (max-width: 768px) {
+    /* Sidebar itself will be full width. Emoji panel inside it will also be full width by default. */
+    .emoji-panel {
+        max-height: 150px; /* Confirming max height for stacked view */
+        margin-top: 10px;
+    }
+
+    #sidebar {
+        max-height: 350px; /* Example: 200px for user list + 150px for emoji panel */
+    }
+
+    #chat-app-container {
+        /* flex-direction: column; is already set */
+    }
+}
+
+/* --- Groups Page Specific Styles --- */
+#groups-main-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 30px;
+}
+
+#user-groups-section {
+    background: linear-gradient(145deg, #ffffff, #f0f4f8);
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    margin-bottom: 40px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#user-groups-section h2 {
+    color: #2c3e50;
+    font-size: 1.8em;
+    margin-bottom: 25px;
+    text-align: center;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+    position: relative;
+    padding-bottom: 15px;
+}
+
+#user-groups-section h2::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 3px;
+    background: linear-gradient(90deg, #3498db, #2980b9);
+    border-radius: 3px;
+}
+
+#my-groups-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+#my-groups-list li {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#my-groups-list li:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(145deg, #ffffff, #f8f9fa);
+}
+
+#my-groups-list li .group-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+#my-groups-list li .group-name {
+    font-size: 1.1em;
+    color: #2c3e50;
+    font-weight: 600;
+    flex-grow: 1;
+}
+
+#my-groups-list li .join-code {
+    background: rgba(52, 152, 219, 0.1);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.9em;
+    color: #2c3e50;
+    border: 1px dashed #3498db;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#my-groups-list li .join-code .code {
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+#my-groups-list li .join-code .copy-btn {
+    background: none;
+    border: none;
+    color: #3498db;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+#my-groups-list li .join-code .copy-btn:hover {
+    background: rgba(52, 152, 219, 0.2);
+    transform: scale(1.1);
+}
+
+#my-groups-list li .group-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+#my-groups-list li .group-actions button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.2s ease;
+}
+
+#my-groups-list li .group-actions .join-btn {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+}
+
+#my-groups-list li .group-actions .leave-btn {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+}
+
+#my-groups-list li .group-actions button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+#no-groups-message {
+    text-align: center;
+    color: #7f8c8d;
+    font-size: 1.1em;
+    padding: 30px;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 12px;
+    margin: 20px 0;
+    border: 1px dashed #bdc3c7;
+}
+
+/* Responsive adjustments for groups page */
+@media (max-width: 768px) {
+    #groups-main-content {
+        padding: 15px;
+    }
+
+    #my-groups-list {
+        grid-template-columns: 1fr;
+    }
+
+    #user-groups-section {
+        padding: 15px;
+    }
+
+    #user-groups-section h2 {
+        font-size: 1.5em;
+    }
+}
+
+/* --- Group Management Section Styles --- */
+#manage-groups-section {
+    display: flex;
+    gap: 30px;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    margin-top: 40px;
+}
+
+#create-group-form-container,
+#join-group-form-container {
+    background: linear-gradient(145deg, #ffffff, #f0f4f8);
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    flex: 1;
+    min-width: 300px;
+    max-width: 450px;
+}
+
+#create-group-form-container h3,
+#join-group-form-container h3 {
+    color: #2c3e50;
+    font-size: 1.4em;
+    margin-bottom: 20px;
+    text-align: center;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+    position: relative;
+    padding-bottom: 12px;
+}
+
+#create-group-form-container h3::after,
+#join-group-form-container h3::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, #3498db, #2980b9);
+    border-radius: 3px;
+}
+
+#create-group-form,
+#join-group-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#create-group-form div,
+#join-group-form div {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#create-group-form label,
+#join-group-form label {
+    color: #2c3e50;
+    font-weight: 600;
+    font-size: 0.95em;
+}
+
+#new-group-name,
+#join-code {
+    padding: 12px;
+    border: 2px solid #e0e6ed;
+    border-radius: 8px;
+    font-size: 1em;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+#new-group-name:focus,
+#join-code:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 8px rgba(52, 152, 219, 0.3);
+    outline: none;
+}
+
+#create-group-form button,
+#join-group-form button {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+}
+
+#create-group-form button:hover,
+#join-group-form button:hover {
+    background: linear-gradient(135deg, #2980b9, #2573a7);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+#create-group-message,
+#join-group-message {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 0.95em;
+}
+
+/* Responsive adjustments for group management section */
+@media (max-width: 768px) {
+    #manage-groups-section {
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+    }
+
+    #create-group-form-container,
+    #join-group-form-container {
+        width: 100%;
+        max-width: none;
+    }
+}
+
+/* --- Help Section Styles --- */
+.help-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+.help-button:hover {
+    transform: translateY(-2px) scale(1.1);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+}
+
+.help-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1001;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.help-modal.active {
+    display: flex;
+    opacity: 1;
+}
+
+.help-content {
+    position: relative;
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    margin: auto;
+    background: linear-gradient(145deg, #ffffff, #f0f4f8);
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    overflow-y: auto;
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+}
+
+.help-modal.active .help-content {
+    transform: translateY(0);
+}
+
+.help-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #666;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.help-close:hover {
+    background: rgba(0, 0, 0, 0.1);
+    color: #333;
+}
+
+.help-section {
+    margin-bottom: 30px;
+}
+
+.help-section h2 {
+    color: #2c3e50;
+    font-size: 1.5em;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #3498db;
+}
+
+.help-section h3 {
+    color: #34495e;
+    font-size: 1.2em;
+    margin: 20px 0 10px;
+}
+
+.help-section p {
+    color: #555;
+    line-height: 1.6;
+    margin-bottom: 15px;
+}
+
+.help-section ul {
+    list-style-type: none;
+    padding-left: 20px;
+}
+
+.help-section ul li {
+    margin-bottom: 10px;
+    position: relative;
+    padding-left: 25px;
+}
+
+.help-section ul li::before {
+    content: "•";
+    color: #3498db;
+    font-size: 1.5em;
+    position: absolute;
+    left: 0;
+    top: -2px;
+}
+
+.update-section {
+    background: rgba(52, 152, 219, 0.1);
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 20px;
+}
+
+.update-section h3 {
+    color: #2980b9;
+    margin-top: 0;
+}
+
+/* Responsive adjustments for help section */
+@media (max-width: 768px) {
+    .help-content {
+        width: 95%;
+        padding: 20px;
+    }
+
+    .help-section h2 {
+        font-size: 1.3em;
+    }
+
+    .help-section h3 {
+        font-size: 1.1em;
+    }
+}
+
+/* --- Options Menu Styles --- */
+.options-button {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.3s ease;
+    margin-right: 10px;
+}
+
+.options-button:hover {
+    background: linear-gradient(135deg, #2980b9, #2573a7);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.options-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1001;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.options-modal.active {
+    display: flex;
+    opacity: 1;
+}
+
+.options-content {
+    position: relative;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    margin: auto;
+    background: linear-gradient(145deg, #ffffff, #f0f4f8);
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    overflow-y: auto;
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+}
+
+.options-modal.active .options-content {
+    transform: translateY(0);
+}
+
+.options-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #666;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.options-close:hover {
+    background: rgba(0, 0, 0, 0.1);
+    color: #333;
+}
+
+.options-section {
+    margin-bottom: 25px;
+}
+
+.options-section h2 {
+    color: #2c3e50;
+    font-size: 1.5em;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #3498db;
+}
+
+.options-section h3 {
+    color: #34495e;
+    font-size: 1.2em;
+    margin: 20px 0 10px;
+}
+
+.options-section label {
+    display: block;
+    margin: 15px 0 5px;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.options-section select,
+.options-section input[type="range"] {
+    width: 100%;
+    padding: 8px;
+    border: 2px solid #e0e6ed;
+    border-radius: 8px;
+    font-size: 1em;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.options-section select:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 8px rgba(52, 152, 219, 0.3);
+    outline: none;
+}
+
+.options-section input[type="range"] {
+    -webkit-appearance: none;
+    height: 8px;
+    background: #e0e6ed;
+    border-radius: 4px;
+    outline: none;
+}
+
+.options-section input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #3498db;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.options-section input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+    background: #2980b9;
+}
+
+.options-section .range-value {
+    text-align: center;
+    color: #666;
+    font-size: 0.9em;
+    margin-top: 5px;
+}
+
+/* Responsive adjustments for options menu */
+@media (max-width: 768px) {
+    .options-content {
+        width: 95%;
+        padding: 20px;
+    }
+
+    .options-section h2 {
+        font-size: 1.3em;
+    }
+
+    .options-section h3 {
+        font-size: 1.1em;
+    }
+}
+
+/* --- Dark Theme Styles --- */
+body.dark-theme {
+    background: #1a1a1a; /* Dark mode background: very dark grey */
+    color: #ffffff; /* Dark mode text: white */
+}
+
+/* Ensure headings, paragraphs, labels, and common text elements are white in dark mode */
+body.dark-theme h1,
+body.dark-theme h2,
+body.dark-theme h3,
+body.dark-theme h4,
+body.dark-theme h5,
+body.dark-theme h6,
+body.dark-theme p,
+body.dark-theme label,
+body.dark-theme span,
+body.dark-theme div, /* General divs that might contain text directly */
+body.dark-theme li, /* List items */
+body.dark-theme th, /* Table headers */
+body.dark-theme td  /* Table data cells */
+{
+    color: #ffffff; /* Explicitly set to white */
+}
+
+/* Re-apply specific colors for elements that should NOT be plain white in dark mode, if any were unintentionally overridden */
+/* Example: if you had special colored spans, you might need to add them back here */
+/* body.dark-theme .special-colored-span { color: #your-special-color; } */
+
+body.dark-theme #chat-app-container,
+body.dark-theme .page-container {
+    background-color: #1a1a1a;
+}
+
+body.dark-theme #main-content-area {
+    background-color: #232323; /* Slightly lighter dark grey for contrast */
+    box-shadow: none;
+}
+
+body.dark-theme .chat-window,
+body.dark-theme #create-group-form-container,
+body.dark-theme #join-group-form-container,
+body.dark-theme #user-groups-section {
+    background: linear-gradient(145deg, #2c3e50, #34495e);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+body.dark-theme .chat-title-bar,
+body.dark-theme #create-group-form-container h3,
+body.dark-theme #join-group-form-container h3,
+body.dark-theme #user-groups-section h2 {
+    background: linear-gradient(135deg, #2c3e50, #34495e);
+    color: #ffffff;
+}
+
+body.dark-theme .messages,
+body.dark-theme #my-groups-list li {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+body.dark-theme .messages li,
+body.dark-theme #my-groups-list li .group-name {
+    color: #ffffff;
+}
+
+body.dark-theme .messages li.other-message {
+    /* background: linear-gradient(135deg, #34495e, #2c3e50); */
+    background: linear-gradient(135deg, #3a3f44, #40454a); /* Darker, desaturated grey */
+    color: #e0e0e0; /* Lighter text for dark mode */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+body.dark-theme .messages li.my-message {
+    /* background: linear-gradient(135deg, #27ae60, #2ecc71); */
+    background: linear-gradient(135deg, #0069d9, #004a99); /* Slightly darker blue for dark theme */
+    color: #ffffff; /* White text */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+body.dark-theme #message-form,
+body.dark-theme .pm-form,
+body.dark-theme #create-group-form,
+body.dark-theme #join-group-form {
+    background: linear-gradient(145deg, #2c3e50, #34495e);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+body.dark-theme #message-input,
+body.dark-theme .pm-form input[type="text"],
+body.dark-theme #new-group-name,
+body.dark-theme #join-code {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+body.dark-theme #message-input::placeholder,
+body.dark-theme #new-group-name::placeholder,
+body.dark-theme #join-code::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+body.dark-theme #typing-indicator {
+    background-color: #2c3e50;
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-theme .timestamp {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+body.dark-theme #messages li a {
+    color: #3498db;
+}
+
+body.dark-theme #messages li a:hover {
+    color: #2980b9;
+}
+
+body.dark-theme #user-list-container {
+    background: linear-gradient(145deg, #2c3e50, #34495e);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+body.dark-theme #user-list-container h2 {
+    color: #ffffff;
+}
+
+body.dark-theme #user-list li {
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-theme #user-list li.can-pm:hover {
+    background: rgba(52, 152, 219, 0.2);
+    color: #ffffff;
+}
+
+body.dark-theme #user-list li.group-chat-option {
+    color: #2ecc71;
+    background: rgba(46, 204, 113, 0.1);
+}
+
+body.dark-theme #user-list li.group-chat-option:hover {
+    background: rgba(46, 204, 113, 0.2);
+}
+
+body.dark-theme .options-content,
+body.dark-theme .help-content {
+    background: linear-gradient(145deg, #2c3e50, #34495e);
+    color: #ffffff;
+}
+
+body.dark-theme .options-section select,
+body.dark-theme .options-section input[type="range"] {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+body.dark-theme .options-section input[type="range"] {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-theme .options-section input[type="range"]::-webkit-slider-thumb {
+    background: #3498db;
+}
+
+body.dark-theme .options-section .range-value {
+    color: #ffffff;
+}
+
+body.dark-theme .options-section label,
+body.dark-theme .help-section h2,
+body.dark-theme .help-section h3,
+body.dark-theme .help-section p,
+body.dark-theme .help-section li {
+    color: #ffffff;
+}
+
+body.dark-theme .options-close,
+body.dark-theme .help-close {
+    color: #ffffff;
+}
+
+body.dark-theme .options-close:hover,
+body.dark-theme .help-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+body.dark-theme .update-section {
+    background: rgba(52, 152, 219, 0.2);
+    color: #ffffff;
+}
+
+body.dark-theme .update-section h3 {
+    color: #ffffff;
+}
+
+body.dark-theme .message-display {
+    color: #ffffff;
+}
+
+body.dark-theme #no-groups-message {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+body.dark-theme #my-groups-list li .join-code {
+    background: rgba(52, 152, 219, 0.2);
+    color: #ffffff;
+    border-color: rgba(52, 152, 219, 0.3);
+}
+
+body.dark-theme #my-groups-list li .join-code .copy-btn {
+    color: #3498db;
+}
+
+body.dark-theme #my-groups-list li .join-code .copy-btn:hover {
+    background: rgba(52, 152, 219, 0.3);
+}
+
+/* Light theme text colors */
+body {
+    color: #2c3e50; /* Default text color for light mode */
+}
+
+.help-content,
+.options-content,
+#create-group-form-container,
+#join-group-form-container,
+.auth-container { /* Added auth-container for light mode text */
+    color: #2c3e50; /* Ensure these containers have dark text in light mode */
+}
+
+.help-section h2,
+.help-section h3,
+.options-section h2,
+.options-section h3,
+.auth-container h1 { /* Added auth-container h1 for light mode text */
+    color: #2c3e50;
+}
+
+.help-section p,
+.help-section li,
+.options-section label,
+.auth-container label { /* Added auth-container label for light mode text */
+    color: #2c3e50;
+}
+
+#create-group-form label,
+#join-group-form label {
+    color: #2c3e50;
+}
+
+#no-groups-message {
+    color: #7f8c8d;
+}
+
+body.dark-theme #chat-app-container {
+    background-color: #1a1a1a;
+}
+
+body.dark-theme #main-content-area {
+    background-color: #232323; /* Slightly lighter dark grey than body, for contrast */
+}
+
+body.dark-theme .messages {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-theme .messages li.other-message {
+    background: linear-gradient(135deg, #3a3f44, #40454a); /* Consistent dark grey for other messages */
+    color: #e0e0e0; /* Lighter text for readability */
+}
+
+body.dark-theme .messages li.my-message {
+    background: linear-gradient(135deg, #0069d9, #004a99); /* Consistent blue for my messages */
+    color: #ffffff; /* White text */
+}
+
+body.dark-theme #message-form,
+body.dark-theme .pm-form {
+    background: linear-gradient(145deg, #2c3e50, #34495e);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-theme #message-input,
+body.dark-theme .pm-form input[type="text"] {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+body.dark-theme #message-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+body.dark-theme #typing-indicator {
+    background-color: #2c3e50;
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-theme .timestamp {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+body.dark-theme #messages li a {
+    color: #3498db;
+}
+
+body.dark-theme #messages li a:hover {
+    color: #2980b9;
+}
+
+.account-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.account-button {
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    text-align: center;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.account-button.change-password {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+}
+
+.account-button.change-password:hover {
+    background: linear-gradient(135deg, #2980b9, #2573a7);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.account-button.delete-account {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+}
+
+.account-button.delete-account:hover {
+    background: linear-gradient(135deg, #c0392b, #a93226);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Dark theme styles for account buttons */
+body.dark-theme .account-button.change-password {
+    background: linear-gradient(135deg, #2980b9, #2573a7);
+}
+
+body.dark-theme .account-button.change-password:hover {
+    background: linear-gradient(135deg, #2573a7, #1f6aa5);
+}
+
+body.dark-theme .account-button.delete-account {
+    background: linear-gradient(135deg, #c0392b, #a93226);
+}
+
+body.dark-theme .account-button.delete-account:hover {
+    background: linear-gradient(135deg, #a93226, #922b21);
+}
+
+/* Account Management Pages Styles */
+.auth-container {
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 30px;
+    background: linear-gradient(145deg, #ffffff, #f0f4f8);
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.auth-container h1 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 25px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.auth-container form div {
+    margin-bottom: 20px;
+}
+
+.auth-container label {
+    display: block;
+    margin-bottom: 8px;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.auth-container input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e0e6ed;
+    border-radius: 8px;
+    font-size: 1em;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.auth-container input:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 8px rgba(52, 152, 219, 0.3);
+    outline: none;
+}
+
+.auth-container button {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+}
+
+.auth-container button:hover {
+    background: linear-gradient(135deg, #2980b9, #2573a7);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.back-link {
+    display: inline-block;
+    color: #3498db;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.back-link:hover {
+    color: #2980b9;
+    transform: translateX(-5px);
+}
+
+/* Dark theme styles for account management pages */
+body.dark-theme .auth-container {
+    background: linear-gradient(145deg, #2c3e50, #34495e);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-theme .auth-container h1 {
+    color: #ffffff;
+}
+
+body.dark-theme .auth-container label {
+    color: #ffffff;
+}
+
+body.dark-theme .auth-container input {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+body.dark-theme .auth-container input:focus {
+    border-color: #3498db;
+}
+
+body.dark-theme .back-link {
+    color: #3498db;
+}
+
+body.dark-theme .back-link:hover {
+    color: #bdc3c7;
+}
+
+body.dark-theme .success-message {
+    color: #a5d6a7; /* Lighter green for dark mode */
+}
+body.dark-theme .error-message {
+    color: #ef9a9a; /* Lighter red for dark mode */
+}
+
+/* Keep user info bar text dark in dark mode */
+body.dark-theme #user-info-bar-label,
+body.dark-theme #username-display {
+    color: #2c3e50 !important; /* Use a dark color, !important to override general rule */
+}

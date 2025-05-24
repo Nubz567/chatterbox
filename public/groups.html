@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Groups - Chatterbox</title>
+    <link rel="stylesheet" href="/style.css">
+    <!-- Add specific styles for groups page if needed, or link a new CSS file -->
+</head>
+<body class="has-fixed-logo">
+    <div class="site-logo">
+        <a href="/"><img src="/Chatterboxlogo/chatterboxlogo.png" alt="Chatterbox Logo"></a>
+    </div>
+
+    <div class="page-container">
+        <div class="user-info-bar" style="padding: 10px 20px; background-color: #f8f9fa; border-bottom: 1px solid #dee2e6; text-align: right;">
+            <span id="user-info-bar-label">Logged in as: </span><span id="username-display" style="font-weight: bold;"></span>
+        </div>
+        <header style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background-color: #f0f0f0;">
+            <div></div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <button type="button" class="options-button">⚙️ Settings</button>
+                <form action="/logout" method="POST">
+                    <button type="submit" class="button-logout">Logout</button>
+                </form>
+            </div>
+        </header>
+
+        <div id="groups-main-content">
+            <div id="user-groups-section">
+                <h2>Your Groups</h2>
+                <div id="group-list-messages" class="message-display" style="text-align: center; margin-bottom: 10px;"></div>
+                <ul id="my-groups-list">
+                    <!-- Example group item structure (will be populated by JavaScript):
+                    <li>
+                        <div class="group-info">
+                            <span class="group-name">Group Name</span>
+                            <div class="join-code">
+                                <span class="code">ABC123</span>
+                                <button class="copy-btn" title="Copy join code">📋</button>
+                            </div>
+                        </div>
+                        <div class="group-actions">
+                            <button class="leave-btn">Leave Group</button>
+                        </div>
+                    </li>
+                    -->
+                    <p id="no-groups-message" style="display: none;">You are not a member of any groups yet.</p>
+                </ul>
+            </div>
+
+            <div id="manage-groups-section">
+                <div id="create-group-form-container">
+                    <h3>Create New Group</h3>
+                    <form id="create-group-form">
+                        <div>
+                            <label for="new-group-name">Group Name:</label>
+                            <input type="text" id="new-group-name" name="new-group-name" required>
+                        </div>
+                        <button type="submit">Create Group</button>
+                        <p id="create-group-message" class="message-display"></p>
+                    </form>
+                </div>
+
+                <div id="join-group-form-container">
+                    <h3>Join Existing Group</h3>
+                    <form id="join-group-form">
+                        <div>
+                            <label for="join-code">Group Join Code:</label>
+                            <input type="text" id="join-code" name="join-code" required>
+                        </div>
+                        <button type="submit">Join Group</button>
+                        <p id="join-group-message" class="message-display"></p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="options-modal">
+        <div class="options-content">
+            <button class="options-close">&times;</button>
+            
+            <div class="options-section">
+                <h2>Appearance</h2>
+                <label>
+                    <input type="radio" name="theme" value="light" checked>
+                    Light Mode
+                </label>
+                <label>
+                    <input type="radio" name="theme" value="dark">
+                    Dark Mode
+                </label>
+                
+                <h3>Brightness</h3>
+                <label for="brightness">Screen Brightness</label>
+                <input type="range" id="brightness" min="50" max="100" value="100">
+                <div class="range-value">100%</div>
+            </div>
+            
+            <div class="options-section">
+                <h2>Notifications</h2>
+                <label>
+                    <input type="checkbox" id="enable-notifications" checked>
+                    Enable Notifications
+                </label>
+                <label>
+                    <input type="checkbox" id="sound-notifications" checked>
+                    Sound Notifications
+                </label>
+            </div>
+            
+            <div class="options-section">
+                <h2>Privacy</h2>
+                <label>
+                    <input type="checkbox" id="show-online-status" checked>
+                    Show Online Status
+                </label>
+                <label>
+                    <input type="checkbox" id="show-typing-status" checked>
+                    Show Typing Status
+                </label>
+            </div>
+
+            <div class="options-section">
+                <h2>Account</h2>
+                
+                <!-- Change Username Form -->
+                <form id="change-username-form" style="margin-bottom: 20px;">
+                    <h3>Change Username</h3>
+                    <div>
+                        <label for="new-username-input">New Username:</label>
+                        <input type="text" id="new-username-input" name="newUsername" required minlength="3" maxlength="20" pattern="^[a-zA-Z0-9_]+$" title="Username can only contain letters, numbers, and underscores.">
+                    </div>
+                    <button type="submit" class="button-primary" style="margin-top: 10px;">Save Username</button>
+                    <p id="change-username-message" class="message-display" style="margin-top: 10px;"></p>
+                </form>
+                
+                <div class="account-buttons">
+                    <a href="/change-password" class="account-button change-password">Change Password</a>
+                    <a href="/delete-account" class="account-button delete-account">Delete Account</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/groups.js"></script>
+    <script src="/help.js"></script>
+    <script src="/options.js"></script>
+
+    <div class="version-display">Beta</div>
+</body>
+</html> 

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatterbox</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="has-fixed-logo">
+    <div class="site-logo">
+        <a href="/groups"><img src="/Chatterboxlogo/chatterboxlogo.png" alt="Chatterbox Logo"></a>
+    </div>
+
+    <div id="chat-app-container">
+        <div id="sidebar">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom:10px;">
+                <h2>Online Users</h2>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" class="options-button">💬 Chat Options</button>
+                    <form action="/logout" method="POST" id="logout-form">
+                        <button type="submit">Logout</button>
+                    </form>
+                </div>
+            </div>
+            <div id="user-list-container">
+                <ul id="user-list">
+                    <!-- "Group Chat" and user items will be populated here by client.js -->
+                </ul>
+            </div>
+            <div id="emoji-panel" class="emoji-panel hidden">
+                <!-- Emojis will be populated here by client.js -->
+            </div>
+        </div>
+
+        <div id="main-content-area">
+            <div id="group-chat-area" class="chat-window active-chat">
+                <div class="chat-title-bar">Group Chat</div>
+                <ul id="messages" class="messages"></ul>
+                <div id="typing-indicator"></div>
+                <form id="message-form">
+                    <input id="message-input" autocomplete="off" placeholder="Type a message..." /><button type="submit">Send</button>
+                    <button type="button" id="emoji-button">😀</button>
+                </form>
+            </div>
+
+            <div id="pm-chat-windows-container">
+                <!-- PM windows will look like:
+                <div class="chat-window private-chat" data-room="room_name_here" style="display: none;">
+                    <div class="chat-title-bar">Private Chat with user@example.com</div>
+                    <ul class="pm-messages"></ul>
+                    <form class="pm-form">
+                        <input type="text" autocomplete="off" /><button>Send</button>
+        </form>
+                </div>
+                -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+    <script src="/help.js"></script>
+    <script src="/options.js"></script>
+
+    <!-- Options Modal -->
+    <div class="options-modal">
+        <div class="options-content">
+            <button class="options-close">&times;</button>
+            
+            <div class="options-section">
+                <h2>Appearance</h2>
+                <label>
+                    <input type="radio" name="theme" value="light" checked>
+                    Light Mode
+                </label>
+                <label>
+                    <input type="radio" name="theme" value="dark">
+                    Dark Mode
+                </label>
+                
+                <h3>Brightness</h3>
+                <label for="brightness">Screen Brightness</label>
+                <input type="range" id="brightness" min="50" max="100" value="100">
+                <div class="range-value">100%</div>
+            </div>
+            
+            <div class="options-section">
+                <h2>Notifications</h2>
+                <label>
+                    <input type="checkbox" id="enable-notifications" checked>
+                    Enable Notifications
+                </label>
+                <label>
+                    <input type="checkbox" id="sound-notifications" checked>
+                    Sound Notifications
+                </label>
+            </div>
+            
+            <div class="options-section">
+                <h2>Privacy</h2>
+                <label>
+                    <input type="checkbox" id="show-online-status" checked>
+                    Show Online Status
+                </label>
+                <label>
+                    <input type="checkbox" id="show-typing-status" checked>
+                    Show Typing Status
+                </label>
+            </div>
+
+            <div class="options-section">
+                <h2>Account</h2>
+                <div class="account-buttons">
+                    <a href="/change-password" class="account-button change-password">Change Password</a>
+                    <a href="/delete-account" class="account-button delete-account">Delete Account</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="version-display">Beta</div>
+</body>
+</html>

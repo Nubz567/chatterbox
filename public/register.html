@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Chatterbox</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="has-fixed-logo">
+    <div class="site-logo">
+        <a href="/"><img src="/Chatterboxlogo/chatterboxlogo.png" alt="Chatterbox Logo"></a>
+    </div>
+
+    <div class="login-container">
+        <h1>Register for Chatterbox</h1>
+        
+        <div id="register-message" class="message-display"></div>
+
+        <form id="register-form" action="/register" method="POST">
+            <div>
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div>
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" required minlength="3" maxlength="20">
+            </div>
+            <div>
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div>
+                <label for="confirm-password">Confirm Password:</label>
+                <input type="password" id="confirm-password" name="confirmPassword" required>
+            </div>
+            <button type="submit">Register</button>
+        </form>
+        <p style="text-align: center; margin-top: 15px;">
+            Already have an account? <a href="/">Login here</a>
+        </p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const messageDiv = document.getElementById('register-message');
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            const error = urlParams.get('error');
+            const success = urlParams.get('success');
+
+            if (error) {
+                let messageText = 'An unknown error occurred.';
+                if (error === 'missing_fields') {
+                    messageText = 'Please fill in all fields, including username.';
+                } else if (error === 'password_mismatch') {
+                    messageText = 'Passwords do not match.';
+                } else if (error === 'email_exists') {
+                    messageText = 'This email is already registered. Please login or use a different email.';
+                } else if (error === 'username_exists') {
+                    messageText = 'This username is already taken. Please choose a different one.';
+                } else if (error === 'username_length') {
+                    messageText = 'Username must be between 3 and 20 characters.';
+                } else if (error === 'username_invalid_chars') {
+                    messageText = 'Username can only contain letters, numbers, and underscores.';
+                } else if (error === 'registration_failed') {
+                    messageText = 'Registration failed due to a server issue.';
+                }
+                messageDiv.textContent = messageText;
+                messageDiv.className = 'error-message';
+                messageDiv.style.display = 'block';
+            } else if (success) {
+                if (success === 'registered_from_here_somehow') { 
+                    messageText = 'Registration successful!';
+                    messageDiv.textContent = messageText;
+                    messageDiv.className = 'success-message';
+                    messageDiv.style.display = 'block';
+                }
+            }
+        });
+    </script>
+
+    <script src="/register.js"></script>
+    <script src="/help.js"></script>
+
+    <div class="version-display">Beta</div>
+</body>
+</html>
+
