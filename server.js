@@ -1,4 +1,7 @@
 require('dotenv').config(); // Load environment variables from .env file
+
+console.log('MONGODB_URI being used:', process.env.MONGODB_URI ? 'URI is set' : 'URI is NOT set'); // Temporarily added log
+
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
