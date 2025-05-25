@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchAndStoreCurrentUser() {
         if (!usernameDisplay) return;
         try {
-            const response = await fetch('/api/user');
+            const response = await fetch('/api/user', { credentials: 'include' });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({})); // Try to parse error, default to empty obj
                 throw new Error(errorData.error || 'Failed to fetch user data');
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await fetchAndStoreCurrentUser();
         }
         try {
-            const response = await fetch('/api/user/groups');
+            const response = await fetch('/api/user/groups', { credentials: 'include' });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({})); 
                 throw new Error(errorData.error || 'Failed to fetch groups');
@@ -152,6 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 response = await fetch(`/api/groups/${groupId}/leave`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }, 
+                    credentials: 'include'
                 });
                 const data = await response.json(); 
                 if (!response.ok) {
@@ -205,6 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 response = await fetch(`/api/groups/${groupId}/delete`, {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
                 });
 
                 const data = await response.json(); // Expect JSON response
@@ -267,7 +269,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch('/api/groups/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: groupName })
+                    body: JSON.stringify({ name: groupName }),
+                    credentials: 'include'
                 });
                 const data = await response.json();
                 if (!response.ok) {
@@ -296,7 +299,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch('/api/groups/join', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ joinCode: code })
+                    body: JSON.stringify({ joinCode: code }),
+                    credentials: 'include'
                 });
                 const data = await response.json();
                 if (!response.ok) {

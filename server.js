@@ -40,6 +40,8 @@ const users = [
 ];
 
 const app = express();
+app.set('trust proxy', 1);
+
 const server = http.createServer(app);
 const io = socketIo(server);
 
@@ -50,7 +52,11 @@ const sessionMiddleware = session({
   secret: 'your secret key for chatterbox',
   resave: false,
   saveUninitialized: false,
-  // cookie: { secure: true } // Recommended for production if using HTTPS
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production (HTTPS)
+    httpOnly: true, // Prevent client-side JS from accessing the cookie
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' // Necessary for cross-site requests if API is on a different subdomain/domain. 'lax' is fine for same-site.
+  }
 });
 
 app.use(sessionMiddleware);
@@ -373,18 +379,42 @@ app.post('/api/user/change-username', (req, res) => {
 // Handle login attempts
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
+  console.log(`Login attempt for email: ${email}`); // Added log
 
   if (email && password) {
     const user = users.find(u => u.email === email);
-    if (user && await bcrypt.compare(password, user.hashedPassword)) {
-      req.session.user = { email: user.email, username: user.username };
-      console.log(`User ${user.email} (Username: ${user.username}) logged in. Session:`, req.session);
-      res.redirect('/groups');
+    console.log('Found user in memory:', user ? {email: user.email, username: user.username} : null); // Added log
+
+    if (user) {
+      try {
+        const passwordsMatch = await bcrypt.compare(password, user.hashedPassword);
+        console.log(`Password comparison result for ${email}: ${passwordsMatch}`); // Added log
+
+        if (passwordsMatch) {
+          req.session.user = { email: user.email, username: user.username };
+          console.log(`User ${user.email} (Username: ${user.username}) logged in. Session data:`, req.session.user); // Updated log for clarity
+          // Send a JSON response instead of redirect for easier debugging from client-side
+          // res.redirect('/groups'); 
+          res.status(200).json({ success: true, message: 'Login successful', redirectTo: '/groups' });
+        } else {
+          console.log(`Invalid credentials (password mismatch) for ${email}`); // Added log
+          // res.redirect('/?error=invalid_credentials');
+          res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+      } catch (compareError) {
+        console.error(`Error during password comparison for ${email}:`, compareError); // Added log
+        // res.redirect('/?error=login_error');
+        res.status(500).json({ success: false, message: 'Login error' });
+      }
     } else {
-      res.redirect('/?error=invalid_credentials');
+      console.log(`Invalid credentials (user not found) for ${email}`); // Added log
+      // res.redirect('/?error=invalid_credentials');
+      res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
   } else {
-    res.redirect('/?error=missing_email_or_password');
+    console.log('Missing email or password in login attempt'); // Added log
+    // res.redirect('/?error=missing_email_or_password');
+    res.status(400).json({ success: false, message: 'Missing email or password' });
   }
 });
 
@@ -416,38 +446,56 @@ app.get('/register', (req, res) => {
 app.post('/register', async (req, res) => {
   const { email, username, password, confirmPassword } = req.body;
   const saltRounds = 10;
+  console.log(`Registration attempt: Email: ${email}, Username: ${username}`); // Added log
 
   if (!email || !username || !password || !confirmPassword) {
-    return res.redirect('/register?error=missing_fields');
+    console.log('Registration failed: Missing fields'); // Added log
+    return res.status(400).json({ success: false, message: 'Missing fields', field: 'all'});
+    // return res.redirect('/register?error=missing_fields');
   }
   if (password !== confirmPassword) {
-    return res.redirect('/register?error=password_mismatch');
+    console.log('Registration failed: Password mismatch'); // Added log
+    return res.status(400).json({ success: false, message: 'Passwords do not match', field: 'confirmPassword'});
+    // return res.redirect('/register?error=password_mismatch');
   }
   if (username.length < 3 || username.length > 20) {
-    return res.redirect('/register?error=username_length');
+    console.log('Registration failed: Username length invalid'); // Added log
+    return res.status(400).json({ success: false, message: 'Username must be 3-20 characters', field: 'username'});
+    // return res.redirect('/register?error=username_length');
   }
   if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-    return res.redirect('/register?error=username_invalid_chars');
+    console.log('Registration failed: Username invalid characters'); // Added log
+    return res.status(400).json({ success: false, message: 'Username can only contain letters, numbers, and underscores', field: 'username'});
+    // return res.redirect('/register?error=username_invalid_chars');
   }
 
+  // THIS CHECK IS AGAINST THE IN-MEMORY ARRAY, WHICH IS THE PROBLEM ON SERVERLESS
   if (users.find(user => user.email === email)) {
-    return res.redirect('/register?error=email_exists');
+    console.log(`Registration failed: Email ${email} already exists (in current instance memory)`); // Added log
+    return res.status(400).json({ success: false, message: 'Email already registered', field: 'email'});
+    // return res.redirect('/register?error=email_exists');
   }
   if (users.find(user => user.username && user.username.toLowerCase() === username.toLowerCase())) {
-    return res.redirect('/register?error=username_exists');
+    console.log(`Registration failed: Username ${username} already exists (in current instance memory)`); // Added log
+    return res.status(400).json({ success: false, message: 'Username already taken', field: 'username'});
+    // return res.redirect('/register?error=username_exists');
   }
 
   try {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
+    // THIS PUSH IS TO THE IN-MEMORY ARRAY
     users.push({ email, username, hashedPassword });
     
-    console.log(`New user registered: ${email}, Username: ${username}`);
-    console.log('Current users:', users.map(u => ({email: u.email, username: u.username})));
+    console.log(`New user registered (in current instance memory): ${email}, Username: ${username}`);
+    console.log('Current users (in current instance memory):', users.map(u => ({email: u.email, username: u.username})));
     
-    res.redirect('/?success=registered');
+    // res.redirect('/?success=registered');
+    res.status(201).json({ success: true, message: 'Registration successful! Please log in.', redirectTo: '/'});
+
   } catch (error) {
-    console.error("Error during registration:", error);
-    res.redirect('/register?error=registration_failed');
+    console.error("Error during registration hashing/storing:", error);
+    // res.redirect('/register?error=registration_failed');
+    res.status(500).json({ success: false, message: 'Error during registration process'});
   }
 });
 
