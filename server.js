@@ -1,9 +1,55 @@
+require('dotenv').config(); // Load environment variables from .env file
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
+const mongoose = require('mongoose'); // Require Mongoose
+const MongoStore = require('connect-mongo');
+
+// --- MongoDB Connection ---
+const mongoURI = process.env.MONGODB_URI;
+
+if (!mongoURI) {
+    console.error('FATAL ERROR: MONGODB_URI is not defined in environment variables.');
+    process.exit(1); // Exit the process if URI is not set
+}
+
+mongoose.connect(mongoURI)
+    .then(() => console.log('MongoDB connected successfully.'))
+    .catch(err => {
+        console.error('MongoDB connection error:', err);
+        // Depending on your strategy, you might want to exit or try reconnecting
+        // For serverless, an error here might indicate a config issue, so exiting is reasonable
+        // process.exit(1);
+    });
+// --- End MongoDB Connection ---
+
+// --- Mongoose Schemas and Models ---
+const userSchema = new mongoose.Schema({
+    email: { type: String, required: true, unique: true },
+    username: { type: String, required: true, unique: true },
+    hashedPassword: { type: String, required: true },
+    // You could add other fields here like creation date, profile picture, etc.
+});
+
+const User = mongoose.model('User', userSchema);
+
+const groupSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true }, // Keep the string ID for now, but Mongoose adds _id automatically
+    name: { type: String, required: true },
+    adminEmail: { type: String, required: true }, // Storing admin email, could reference User ID
+    joinCode: { type: String, required: true, unique: true },
+    members: [{ type: String }], // Array of user emails, could reference User IDs
+    archivedDueToUserDeletion: { type: Boolean, default: false }
+    // You could add message history here directly, or keep it separate
+    // For now, let's keep groupMessageHistories separate as it's in-memory
+});
+
+const Group = mongoose.model('Group', groupSchema);
+
+// --- End Mongoose Schemas and Models ---
 
 // --- Global-like constants and in-memory stores ---
 const MAX_HISTORY_LENGTH = 100;
@@ -24,7 +70,8 @@ function generateUniqueId() {
 // --- End NEW ---
 
 // --- IN-MEMORY USER STORE (FOR DEVELOPMENT ONLY) ---
-// Replace with actual hashed passwords from your hash_password.js script
+// REPLACE THIS ENTIRE BLOCK with Mongoose operations
+/*
 const users = [
   { 
     email: 'user1@example.com',
@@ -38,6 +85,7 @@ const users = [
   }
   // Add more users if you want, each with a pre-hashed password
 ];
+*/
 
 const app = express();
 app.set('trust proxy', 1);
@@ -48,14 +96,22 @@ const io = socketIo(server);
 const PORT = process.env.PORT || 3000;
 
 // --- Session Configuration ---
+
+// Configure MongoDB store for sessions
 const sessionMiddleware = session({
-  secret: 'your secret key for chatterbox',
+  secret: process.env.SESSION_SECRET || 'your default secret key for chatterbox', // Use environment variable for secret
   resave: false,
   saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI, // Use the MongoDB connection string
+    collectionName: 'sessions', // Name of the collection to store sessions
+    ttl: 14 * 24 * 60 * 60 // Session TTL in seconds (e.g., 14 days)
+  }),
   cookie: { 
     secure: process.env.NODE_ENV === 'production', // Use secure cookies in production (HTTPS)
     httpOnly: true, // Prevent client-side JS from accessing the cookie
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' // Necessary for cross-site requests if API is on a different subdomain/domain. 'lax' is fine for same-site.
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Necessary for cross-site requests if API is on a different subdomain/domain. 'lax' is fine for same-site.
+    maxAge: 1000 * 60 * 60 * 24 * 7 // Cookie expiration time (e.g., 7 days)
   }
 });
 
@@ -161,7 +217,7 @@ app.post('/change-password', async (req, res) => {
         return res.status(400).json({ success: false, message: 'New passwords do not match.' });
     }
 
-    const user = users.find(u => u.email === userEmail);
+    const user = await User.findOne({ email: userEmail });
     if (!user) {
         return res.status(404).json({ success: false, message: 'User not found. Please log in again.' });
     }
@@ -177,6 +233,7 @@ app.post('/change-password', async (req, res) => {
 
         // Update the user's password in our in-memory store
         user.hashedPassword = newHashedPassword;
+        await user.save();
         console.log(`Password changed successfully for user: ${userEmail}`);
         
         return res.status(200).json({ success: true, message: 'Password changed successfully! You can now log in with your new password.' });
@@ -206,14 +263,12 @@ app.post('/delete-account', async (req, res) => {
         return res.status(400).json({ success: false, message: 'Password is required to delete your account.' });
     }
 
-    const userIndex = users.findIndex(u => u.email === userEmail);
+    const user = await User.findOne({ email: userEmail });
     // 3. Check if user exists in the array
-    if (userIndex === -1) {
+    if (!user) {
         // If this fails, it returns a 404 status
         return res.status(404).json({ success: false, message: 'User not found. Please log in again.' });
     }
-
-    const user = users[userIndex];
 
     try {
         // 4. Compare the provided password with the stored hash
@@ -225,9 +280,9 @@ app.post('/delete-account', async (req, res) => {
         }
 
         // If all above checks pass, it should reach here:
-        users.splice(userIndex, 1);
+        await user.remove();
         console.log(`Account deleted successfully for user: ${userEmail}`);
-        console.log('Current users:', users.map(u => u.email));
+        console.log('Current users:', await User.find());
 
         // --- NEW: Mark groups associated with the deleted user ---
         for (const groupId in groups) {
@@ -292,7 +347,7 @@ app.get('/api/user', (req, res) => {
 // --- End NEW ---
 
 // --- NEW: API Endpoint to Change Username ---
-app.post('/api/user/change-username', (req, res) => {
+app.post('/api/user/change-username', async (req, res) => {
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ success: false, message: 'Not authenticated. Please log in again.' });
     }
@@ -312,12 +367,12 @@ app.post('/api/user/change-username', (req, res) => {
     }
 
     // Check for username uniqueness (excluding the current user themselves)
-    const conflictingUser = users.find(u => u.username && u.username.toLowerCase() === newUsername.toLowerCase() && u.email !== userEmail);
+    const conflictingUser = await User.findOne({ username: newUsername.toLowerCase(), email: { $ne: userEmail } });
     if (conflictingUser) {
         return res.status(400).json({ success: false, message: 'This username is already taken. Please choose another.' });
     }
 
-    const userToUpdate = users.find(u => u.email === userEmail);
+    const userToUpdate = await User.findOne({ email: userEmail });
     if (!userToUpdate) {
         // This should ideally not happen if session is valid
         return res.status(404).json({ success: false, message: 'Current user not found in database.' });
@@ -325,6 +380,7 @@ app.post('/api/user/change-username', (req, res) => {
 
     const oldUsername = userToUpdate.username;
     userToUpdate.username = newUsername;
+    await userToUpdate.save();
     req.session.user.username = newUsername; // Update session
 
     console.log(`User ${userEmail} changed username from "${oldUsername}" to "${newUsername}"`);
@@ -382,8 +438,8 @@ app.post('/login', async (req, res) => {
   console.log(`Login attempt for email: ${email}`); // Added log
 
   if (email && password) {
-    const user = users.find(u => u.email === email);
-    console.log('Found user in memory:', user ? {email: user.email, username: user.username} : null); // Added log
+    const user = await User.findOne({ email: email });
+    console.log('Found user in database:', user ? {email: user.email, username: user.username} : null); // Added log
 
     if (user) {
       try {
@@ -470,13 +526,13 @@ app.post('/register', async (req, res) => {
   }
 
   // THIS CHECK IS AGAINST THE IN-MEMORY ARRAY, WHICH IS THE PROBLEM ON SERVERLESS
-  if (users.find(user => user.email === email)) {
-    console.log(`Registration failed: Email ${email} already exists (in current instance memory)`); // Added log
+  if (await User.findOne({ email: email })) {
+    console.log(`Registration failed: Email ${email} already exists (in database)`); // Added log
     return res.status(400).json({ success: false, message: 'Email already registered', field: 'email'});
     // return res.redirect('/register?error=email_exists');
   }
-  if (users.find(user => user.username && user.username.toLowerCase() === username.toLowerCase())) {
-    console.log(`Registration failed: Username ${username} already exists (in current instance memory)`); // Added log
+  if (await User.findOne({ username: username.toLowerCase() })) {
+    console.log(`Registration failed: Username ${username} already exists (in database)`); // Added log
     return res.status(400).json({ success: false, message: 'Username already taken', field: 'username'});
     // return res.redirect('/register?error=username_exists');
   }
@@ -484,10 +540,11 @@ app.post('/register', async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     // THIS PUSH IS TO THE IN-MEMORY ARRAY
-    users.push({ email, username, hashedPassword });
+    const newUser = new User({ email, username, hashedPassword });
+    await newUser.save();
     
-    console.log(`New user registered (in current instance memory): ${email}, Username: ${username}`);
-    console.log('Current users (in current instance memory):', users.map(u => ({email: u.email, username: u.username})));
+    console.log(`New user registered (in database): ${email}, Username: ${username}`);
+    console.log('Current users (in database):', await User.find());
     
     // res.redirect('/?success=registered');
     res.status(201).json({ success: true, message: 'Registration successful! Please log in.', redirectTo: '/'});
@@ -502,20 +559,23 @@ app.post('/register', async (req, res) => {
 // --- NEW: API Endpoints for Groups ---
 
 // Helper function to generate a simple join code
-function generateJoinCode(length = 6) {
+async function generateJoinCode(length = 6) { // Marked async as it will check DB
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
     for (let i = 0; i < length; i++) {
         result += characters.charAt(Math.floor(Math.random() * characters.length));
     }
-    // Ensure uniqueness (basic check for in-memory, would need db constraints in prod)
-    if (Object.values(groups).some(g => g.joinCode === result)) {
-        return generateJoinCode(length); // Recurse if not unique (rare for simple case)
+    // Ensure uniqueness against the database
+    const existingGroup = await Group.findOne({ joinCode: result });
+    if (existingGroup) {
+        console.log(`Generated duplicate join code ${result}, regenerating.`);
+        return generateJoinCode(length); // Recurse if not unique
     }
+    console.log(`Generated unique join code: ${result}`);
     return result;
 }
 
-app.post('/api/groups/create', (req, res) => {
+app.post('/api/groups/create', async (req, res) => { // Marked async
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -525,24 +585,41 @@ app.post('/api/groups/create', (req, res) => {
         return res.status(400).json({ error: 'Group name is required' });
     }
 
-    const groupId = generateUniqueId();
     const adminEmail = req.session.user.email;
-    const joinCode = generateJoinCode();
+    // Generate a unique ID (Mongoose will add _id, we can use that or keep this) - let's keep for now if frontend uses 'id'
+    // const groupId = generateUniqueId(); // Use Mongoose _id instead
+    const joinCode = await generateJoinCode(); // Await join code generation
 
-    const newGroup = {
-        id: groupId,
-        name: name.trim(),
-        adminEmail: adminEmail,
-        joinCode: joinCode,
-        members: [adminEmail] // Creator is the first member
-    };
+    try {
+        const newGroup = new Group({
+            // id: groupId, // Mongoose provides _id
+            name: name.trim(),
+            adminEmail: adminEmail,
+            joinCode: joinCode,
+            members: [adminEmail] // Creator is the first member
+        });
 
-    groups[groupId] = newGroup;
-    console.log(`Group created: ${name} (ID: ${groupId}), Code: ${joinCode} by ${adminEmail}`);
-    res.status(201).json(newGroup);
+        const savedGroup = await newGroup.save(); // Save to database
+        console.log(`Group created: ${savedGroup.name} (ID: ${savedGroup._id}), Code: ${savedGroup.joinCode} by ${adminEmail}`);
+        // Return the saved group object, including the Mongoose-generated _id
+        res.status(201).json({ 
+            id: savedGroup._id, // Use _id as the group ID for the frontend
+            name: savedGroup.name,
+            adminEmail: savedGroup.adminEmail,
+            joinCode: savedGroup.joinCode,
+            members: savedGroup.members
+        });
+    } catch (error) {
+        console.error('Error creating group:', error);
+        // Handle potential duplicate join code error if generateJoinCode didn't catch it (Mongoose unique index)
+        if (error.code === 11000) { // MongoDB duplicate key error code
+            return res.status(400).json({ error: 'Failed to generate unique join code. Please try again.' });
+        }
+        res.status(500).json({ error: 'An error occurred while creating the group.' });
+    }
 });
 
-app.post('/api/groups/join', (req, res) => {
+app.post('/api/groups/join', async (req, res) => { // Marked async
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -553,139 +630,197 @@ app.post('/api/groups/join', (req, res) => {
     }
 
     const userEmail = req.session.user.email;
-    const targetGroup = Object.values(groups).find(g => g.joinCode === joinCode.trim());
+    
+    try {
+        // Find the group by join code
+        const targetGroup = await Group.findOne({ joinCode: joinCode.trim() });
 
-    if (!targetGroup) {
-        return res.status(404).json({ error: 'Group not found with this join code' });
+        if (!targetGroup) {
+            return res.status(404).json({ error: 'Group not found with this join code' });
+        }
+
+        // --- NEW: If group was archived, unarchive it upon successful join via code ---
+        if (targetGroup.archivedDueToUserDeletion) {
+            targetGroup.archivedDueToUserDeletion = false;
+            console.log(`Group "${targetGroup.name}" (ID: ${targetGroup._id}) was archived and is now restored by user ${userEmail} joining with code.`);
+        }
+        // --- End NEW ---
+
+        if (targetGroup.members.includes(userEmail)) {
+            // Save the group even if the user is already a member, in case it was archived and just unarchived
+             await targetGroup.save(); 
+            return res.status(400).json({ error: 'User is already a member of this group', group: targetGroup });
+        }
+
+        targetGroup.members.push(userEmail);
+        await targetGroup.save(); // Save the updated group to database
+
+        console.log(`User ${userEmail} joined group: ${targetGroup.name} (ID: ${targetGroup._id})`);
+        res.status(200).json({
+            id: targetGroup._id, // Use _id for the frontend
+            name: targetGroup.name,
+            adminEmail: targetGroup.adminEmail,
+            joinCode: targetGroup.joinCode,
+            members: targetGroup.members
+        });
+    } catch (error) {
+        console.error('Error joining group:', error);
+        res.status(500).json({ error: 'An error occurred while joining the group.' });
     }
-
-    // --- NEW: If group was archived, unarchive it upon successful join via code ---
-    if (targetGroup.archivedDueToUserDeletion) {
-        delete targetGroup.archivedDueToUserDeletion;
-        console.log(`Group "${targetGroup.name}" (ID: ${targetGroup.id}) was archived and is now restored by user ${userEmail} joining with code.`);
-    }
-    // --- End NEW ---
-
-    if (targetGroup.members.includes(userEmail)) {
-        return res.status(400).json({ error: 'User is already a member of this group', group: targetGroup });
-    }
-
-    targetGroup.members.push(userEmail);
-    console.log(`User ${userEmail} joined group: ${targetGroup.name} (ID: ${targetGroup.id})`);
-    res.status(200).json(targetGroup);
 });
 
-app.get('/api/user/groups', (req, res) => {
+app.get('/api/user/groups', async (req, res) => { // Marked async
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ error: 'User not authenticated' });
     }
     const userEmail = req.session.user.email;
-    const memberOfGroups = Object.values(groups).filter(group => {
-        // User must be a member and the group must not be archived
-        // unless the current user is a member (which implies they joined after it was archived, or it wasn't archived for them)
-        return group.members.includes(userEmail) && !group.archivedDueToUserDeletion;
-    });
     
-    res.status(200).json(memberOfGroups);
+    try {
+        // Find all groups where the user is a member and the group is not archived
+        const memberOfGroups = await Group.find({
+            members: userEmail,
+            archivedDueToUserDeletion: { $ne: true } // Only include groups not archived
+        });
+        
+        // Map to the desired structure if needed, or just return the Mongoose documents
+        // Returning Mongoose docs is usually fine, they behave like objects
+        res.status(200).json(memberOfGroups);
+
+    } catch (error) {
+        console.error('Error fetching user groups:', error);
+        res.status(500).json({ error: 'An error occurred while fetching your groups.' });
+    }
 });
 
-app.get('/api/groups/:groupId/members', (req, res) => {
+app.get('/api/groups/:groupId/members', async (req, res) => { // Marked async
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ error: 'User not authenticated' });
     }
 
     const userEmail = req.session.user.email;
     const { groupId } = req.params;
-    const group = groups[groupId];
+    
+    try {
+        // Find the group by its Mongoose _id
+        const group = await Group.findById(groupId);
 
-    if (!group) {
-        return res.status(404).json({ error: 'Group not found' });
+        if (!group) {
+            return res.status(404).json({ error: 'Group not found' });
+        }
+
+        if (!group.members.includes(userEmail)) {
+            return res.status(403).json({ error: 'User is not a member of this group' });
+        }
+
+        // For privacy, you might only want to return emails or basic info, not full user objects if they existed
+        // If you need usernames, you'd need to fetch User documents based on these emails
+        res.status(200).json(group.members);
+    } catch (error) {
+        console.error('Error fetching group members:', error);
+         // Handle potential invalid ObjectId format error
+        if (error.kind === 'ObjectId') {
+             return res.status(400).json({ error: 'Invalid group ID format.' });
+        }
+        res.status(500).json({ error: 'An error occurred while fetching group members.' });
     }
-
-    if (!group.members.includes(userEmail)) {
-        return res.status(403).json({ error: 'User is not a member of this group' });
-    }
-
-    // For privacy, you might only want to return emails or basic info, not full user objects if they existed
-    res.status(200).json(group.members);
 });
 
 // --- NEW: API Endpoint for Leaving a Group ---
-app.post('/api/groups/:groupId/leave', (req, res) => {
+app.post('/api/groups/:groupId/leave', async (req, res) => { // Marked async
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ error: 'User not authenticated' });
     }
 
     const userEmail = req.session.user.email;
     const { groupId } = req.params;
-    const group = groups[groupId];
+    
+    try {
+        // Find the group by its Mongoose _id
+        const group = await Group.findById(groupId);
 
-    if (!group) {
-        return res.status(404).json({ error: 'Group not found' });
-    }
-
-    const memberIndex = group.members.indexOf(userEmail);
-    if (memberIndex === -1) {
-        return res.status(400).json({ error: 'User is not a member of this group' });
-    }
-
-    group.members.splice(memberIndex, 1);
-    console.log(`User ${userEmail} left group: ${group.name} (ID: ${groupId})`);
-
-    // Optional: Handle if admin leaves
-    // If the admin is the one leaving:
-    if (group.adminEmail === userEmail) {
-        console.log(`Admin ${userEmail} left group ${group.name}.`);
-        // If there are other members, you might want to assign a new admin.
-        // For now, the group will persist without an admin or with the admin still listed as admin but not a member.
-        // If the group becomes empty, you might want to delete it.
-        if (group.members.length === 0) {
-            console.log(`Group ${group.name} is now empty after admin left. Consider deletion logic.`);
-            // delete groups[groupId]; // Uncomment to delete empty group
-            // console.log(`Group ${group.name} (ID: ${groupId}) was empty and has been deleted.`);
+        if (!group) {
+            return res.status(404).json({ error: 'Group not found' });
         }
-    }
 
-    const responseObject = { message: `Successfully left group "${group.name}".` };
-    console.log('[Server INFO] Attempting to send JSON response for leave group:', JSON.stringify(responseObject));
-    res.status(200).json(responseObject);
+        const memberIndex = group.members.indexOf(userEmail);
+        if (memberIndex === -1) {
+            return res.status(400).json({ error: 'User is not a member of this group' });
+        }
+
+        group.members.splice(memberIndex, 1);
+        await group.save(); // Save the updated group to database
+
+        console.log(`User ${userEmail} left group: ${group.name} (ID: ${group._id})`);
+
+        // Optional: Handle if admin leaves and group becomes empty
+        if (group.adminEmail === userEmail && group.members.length === 0) {
+            console.log(`Admin ${userEmail} left group ${group.name} and it is now empty. Deleting group.`);
+            await Group.deleteOne({ _id: groupId }); // Delete empty group if admin leaves
+            console.log(`Group ${group.name} (ID: ${groupId}) was empty after admin left and has been deleted.`);
+        } else if (group.adminEmail === userEmail) {
+             console.log(`Admin ${userEmail} left group ${group.name}. Group is not empty, remains without admin management.`);
+             // You might want to reassign admin here in a real app
+        }
+
+        res.status(200).json({ message: `Successfully left group "${group.name}".` });
+    } catch (error) {
+        console.error('Error leaving group:', error);
+         // Handle potential invalid ObjectId format error
+        if (error.kind === 'ObjectId') {
+             return res.status(400).json({ error: 'Invalid group ID format.' });
+        }
+        res.status(500).json({ error: 'An error occurred while leaving the group.' });
+    }
 });
 
 // --- NEW: API Endpoint for Deleting a Group (Admin Only) ---
-app.delete('/api/groups/:groupId/delete', (req, res) => {
+app.delete('/api/groups/:groupId/delete', async (req, res) => { // Marked async
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ success: false, message: 'User not authenticated' });
     }
 
     const userEmail = req.session.user.email;
     const { groupId } = req.params;
-    const group = groups[groupId];
+    
+    try {
+        // Find the group by its Mongoose _id
+        const group = await Group.findById(groupId);
 
-    if (!group) {
-        return res.status(404).json({ success: false, message: 'Group not found' });
+        if (!group) {
+            return res.status(404).json({ success: false, message: 'Group not found' });
+        }
+
+        // Authorization: Only the group admin can delete the group
+        if (group.adminEmail !== userEmail) {
+            return res.status(403).json({ success: false, message: 'You are not authorized to delete this group.' });
+        }
+
+        const groupName = group.name;
+
+        // Proceed with deletion from database
+        await Group.deleteOne({ _id: groupId });
+        // In a real app, you might also want to remove messages associated with this group
+        // and update user documents to remove references to this group if any existed.
+
+        // delete groupMessageHistories[groupId]; // Keep in-memory history independent for now
+        // delete groupActiveUsers[groupId]; // Keep in-memory active users independent for now
+
+        console.log(`Group "${groupName}" (ID: ${groupId}) deleted by admin ${userEmail}.`);
+
+        // Optional: Notify connected clients that this group has been deleted
+        // This allows clients to react, e.g., redirect if they were in that group's chat
+        io.to(groupId).emit('group_deleted', { groupId: groupId, groupName: groupName, message: `Group "${groupName}" has been deleted by the admin.` });
+
+        return res.status(200).json({ success: true, message: `Group "${groupName}" deleted successfully.` });
+
+    } catch (error) {
+        console.error('Error deleting group:', error);
+         // Handle potential invalid ObjectId format error
+        if (error.kind === 'ObjectId') {
+             return res.status(400).json({ success: false, message: 'Invalid group ID format.' });
+        }
+        res.status(500).json({ success: false, message: 'An error occurred while deleting the group.' });
     }
-
-    // Authorization: Only the group admin can delete the group
-    if (group.adminEmail !== userEmail) {
-        return res.status(403).json({ success: false, message: 'You are not authorized to delete this group.' });
-    }
-
-    const groupName = group.name;
-
-    // Proceed with deletion
-    delete groups[groupId];
-    delete groupMessageHistories[groupId];
-    delete groupActiveUsers[groupId];
-
-    console.log(`Group "${groupName}" (ID: ${groupId}) deleted by admin ${userEmail}.`);
-
-    // Optional: Notify connected clients that this group has been deleted
-    // This allows clients to react, e.g., redirect if they were in that group's chat
-    io.to(groupId).emit('group_deleted', { groupId: groupId, groupName: groupName, message: `Group "${groupName}" has been deleted by the admin.` });
-    // Note: Sockets in a room are automatically removed when the room is effectively gone,
-    // but explicitly emitting helps clients clean up their UI or redirect.
-
-    return res.status(200).json({ success: true, message: `Group "${groupName}" deleted successfully.` });
 });
 // --- End NEW API Endpoints ---
 
@@ -694,7 +829,7 @@ io.engine.use(sessionMiddleware);
 
 // const privateChatRooms = {}; // This might need to be re-evaluated in context of groups
 
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => { // Marked async for User lookup
   const session = socket.request.session;
   let userEmail = 'Anonymous'; // Keep email for unique ID
   let username = 'Anonymous';  // Add username for display
@@ -741,7 +876,7 @@ io.on('connection', (socket) => {
   }
 
   // --- Handle Start Private Chat --- (Needs to be group-aware or re-evaluated)
-  socket.on('start_private_chat', (data) => {
+  socket.on('start_private_chat', async (data) => {
     const initiatorEmail = userEmail; 
     const initiatorUsername = username; 
     const targetEmail = data.targetUserEmail;
@@ -751,7 +886,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const targetUser = users.find(u => u.email === targetEmail);
+    const targetUser = await User.findOne({ email: targetEmail });
     const targetUsernameForDisplay = targetUser ? targetUser.username : targetEmail;
 
     let targetSocketId = null;
