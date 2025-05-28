@@ -77,12 +77,12 @@ function generateUniqueId() {
 /*
 const users = [
   { 
-    email: 'user1@example.com',
+    email: 'user1@example.com', 
     username: 'UserOne',
     hashedPassword: 'YOUR_FIRST_GENERATED_HASH_HERE'
   },
   { 
-    email: 'user2@example.com',
+    email: 'user2@example.com', 
     username: 'UserTwo',
     hashedPassword: 'YOUR_SECOND_GENERATED_HASH_HERE'
   }
@@ -596,10 +596,10 @@ app.post('/api/groups/create', async (req, res) => { // Marked async
     try {
         const newGroup = new Group({
             // id: groupId, // Mongoose provides _id
-            name: name.trim(),
-            adminEmail: adminEmail,
-            joinCode: joinCode,
-            members: [adminEmail] // Creator is the first member
+        name: name.trim(),
+        adminEmail: adminEmail,
+        joinCode: joinCode,
+        members: [adminEmail] // Creator is the first member
         });
 
         const savedGroup = await newGroup.save(); // Save to database
@@ -638,9 +638,9 @@ app.post('/api/groups/join', async (req, res) => { // Marked async
         // Find the group by join code
         const targetGroup = await Group.findOne({ joinCode: joinCode.trim() });
 
-        if (!targetGroup) {
-            return res.status(404).json({ error: 'Group not found with this join code' });
-        }
+    if (!targetGroup) {
+        return res.status(404).json({ error: 'Group not found with this join code' });
+    }
 
         // --- NEW: If group was archived, unarchive it upon successful join via code ---
         if (targetGroup.archivedDueToUserDeletion) {
@@ -649,13 +649,13 @@ app.post('/api/groups/join', async (req, res) => { // Marked async
         }
         // --- End NEW ---
 
-        if (targetGroup.members.includes(userEmail)) {
+    if (targetGroup.members.includes(userEmail)) {
             // Save the group even if the user is already a member, in case it was archived and just unarchived
              await targetGroup.save(); 
-            return res.status(400).json({ error: 'User is already a member of this group', group: targetGroup });
-        }
+        return res.status(400).json({ error: 'User is already a member of this group', group: targetGroup });
+    }
 
-        targetGroup.members.push(userEmail);
+    targetGroup.members.push(userEmail);
         await targetGroup.save(); // Save the updated group to database
 
         console.log(`User ${userEmail} joined group: ${targetGroup.name} (ID: ${targetGroup._id})`);
@@ -687,7 +687,7 @@ app.get('/api/user/groups', async (req, res) => { // Marked async
         
         // Map to the desired structure if needed, or just return the Mongoose documents
         // Returning Mongoose docs is usually fine, they behave like objects
-        res.status(200).json(memberOfGroups);
+    res.status(200).json(memberOfGroups);
 
     } catch (error) {
         console.error('Error fetching user groups:', error);
@@ -707,17 +707,17 @@ app.get('/api/groups/:groupId/members', async (req, res) => { // Marked async
         // Find the group by its Mongoose _id
         const group = await Group.findById(groupId);
 
-        if (!group) {
-            return res.status(404).json({ error: 'Group not found' });
-        }
+    if (!group) {
+        return res.status(404).json({ error: 'Group not found' });
+    }
 
-        if (!group.members.includes(userEmail)) {
-            return res.status(403).json({ error: 'User is not a member of this group' });
-        }
+    if (!group.members.includes(userEmail)) {
+        return res.status(403).json({ error: 'User is not a member of this group' });
+    }
 
-        // For privacy, you might only want to return emails or basic info, not full user objects if they existed
+    // For privacy, you might only want to return emails or basic info, not full user objects if they existed
         // If you need usernames, you'd need to fetch User documents based on these emails
-        res.status(200).json(group.members);
+    res.status(200).json(group.members);
     } catch (error) {
         console.error('Error fetching group members:', error);
          // Handle potential invalid ObjectId format error
@@ -880,7 +880,7 @@ io.on('connection', async (socket) => { // Marked async for User lookup
 
   // --- Handle Start Private Chat --- (Needs to be group-aware or re-evaluated)
   socket.on('start_private_chat', async (data) => {
-    const initiatorEmail = userEmail; 
+    const initiatorEmail = userEmail;
     const initiatorUsername = username; 
     const targetEmail = data.targetUserEmail;
 
