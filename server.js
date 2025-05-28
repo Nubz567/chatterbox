@@ -445,16 +445,16 @@ app.post('/api/user/change-username', async (req, res) => {
 // Handle login attempts
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
-  console.log(`Login attempt for email: ${email}`); // Added log
+  console.log(`Login attempt for email: ${email}`); // Log the email
 
   if (email && password) {
     const user = await User.findOne({ email: email });
-    console.log('Found user in database:', user ? {email: user.email, username: user.username} : null); // Added log
+    console.log('Found user in database:', user ? {email: user.email, username: user.username} : null); // Log if user is found
 
     if (user) {
       try {
         const passwordsMatch = await bcrypt.compare(password, user.hashedPassword);
-        console.log(`Password comparison result for ${email}: ${passwordsMatch}`); // Added log
+        console.log(`Password comparison result for ${email}: ${passwordsMatch}`); // Log password comparison result
 
         if (passwordsMatch) {
           req.session.user = { email: user.email, username: user.username };
