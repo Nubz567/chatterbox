@@ -1,6 +1,9 @@
 require('dotenv').config(); // Load environment variables from .env file
 
-console.log('MONGODB_URI being used:', process.env.MONGODB_URI ? 'URI is set' : 'URI is NOT set'); // Temporarily added log
+// Temporarily log the URI (be careful not to expose the full password if sharing logs)
+console.log('MONGODB_URI loaded:', process.env.MONGODB_URI ? process.env.MONGODB_URI.replace(/:(.*?)(@)/, ':***$2') : 'URI is NOT set');
+
+console.log('MONGODB_URI being used:', process.env.MONGODB_URI ? 'URI is set' : 'URI is NOT set'); // Keep the existing log too
 
 const express = require('express');
 const http = require('http');
@@ -19,7 +22,11 @@ if (!mongoURI) {
     process.exit(1); // Exit the process if URI is not set
 }
 
-mongoose.connect(mongoURI)
+mongoose.connect(mongoURI, {
+    serverSelectionTimeoutMS: 60000, // Keep trying to find a server for 60s
+    connectTimeoutMS: 60000, // Give the initial connection more time
+    tls: true // Explicitly enable TLS
+})
     .then(() => console.log('MongoDB connected successfully.'))
     .catch(err => {
         console.error('MongoDB connection error:', err);
