@@ -139,7 +139,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.json()); // <-- ADDED: Middleware to parse JSON request bodies for API routes
 
 // Serve static files from the "public" directory
-app.use(express.static(path.join(__dirname, 'public'), { index: false }));
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Example of setting CSP headers
 app.use((req, res, next) => {
@@ -152,7 +152,7 @@ app.use((req, res, next) => {
 
 // Serve login.html as the main page
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+  res.sendFile(path.join(__dirname, '../public', 'login.html'));
 });
 
 // Serve index.html (chat page) on the /chat route
@@ -184,13 +184,13 @@ app.get('/chat', async (req, res) => {
   req.session.currentGroup = { id: groupId, name: groupName || group.name }; // Use provided groupName or fallback to stored name
   console.log(`User ${req.session.user.email} entering chat for group: ${req.session.currentGroup.name} (ID: ${groupId})`);
   
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, '../public', 'index.html'));
 });
 
 // --- NEW: Route for Groups Page ---
 app.get('/groups', (req, res) => {
     if (req.session.user && req.session.user.email) {
-        res.sendFile(path.join(__dirname, 'public', 'groups.html'));
+        res.sendFile(path.join(__dirname, '../public', 'groups.html'));
     } else {
         res.redirect('/'); // If not logged in, redirect to login
     }
@@ -201,7 +201,7 @@ app.get('/groups', (req, res) => {
 app.get('/change-password', (req, res) => {
     console.log('Accessed /change-password GET route');
     if (req.session.user && req.session.user.email) {
-        res.sendFile(path.join(__dirname, 'public', 'change-password.html'));
+        res.sendFile(path.join(__dirname, '../public', 'change-password.html'));
     } else {
         res.redirect('/'); // If not logged in, redirect to login
     }
@@ -211,7 +211,7 @@ app.get('/change-password', (req, res) => {
 app.get('/delete-account', (req, res) => {
     console.log('Accessed /delete-account GET route'); // For debugging
     if (req.session.user && req.session.user.email) {
-        res.sendFile(path.join(__dirname, 'public', 'delete-account.html'));
+        res.sendFile(path.join(__dirname, '../public', 'delete-account.html'));
     } else {
         res.redirect('/'); // If not logged in, redirect to login
     }
@@ -505,7 +505,7 @@ app.post('/logout', (req, res) => {
 
 // --- NEW: Registration Routes ---
 app.get('/register', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'register.html'));
+  res.sendFile(path.join(__dirname, '../public', 'register.html'));
 });
 
 app.post('/register', async (req, res) => {
