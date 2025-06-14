@@ -106,7 +106,8 @@ const io = socketIo(server, {
     origin: "https://chatterbox-blond.vercel.app", // Explicitly allow your frontend URL
     methods: ["GET", "POST"],
     credentials: true
-  }
+  },
+  transports: ['websocket'] // Force WebSocket transport only
 });
 
 const PORT = process.env.PORT || 3000;
