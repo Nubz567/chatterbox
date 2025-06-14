@@ -22,18 +22,36 @@ if (!mongoURI) {
     process.exit(1); // Exit the process if URI is not set
 }
 
+/* DEPRECATED for serverless: This connection logic is moved to an on-demand function.
 mongoose.connect(mongoURI, {
-    serverSelectionTimeoutMS: 60000, // Keep trying to find a server for 60s
-    connectTimeoutMS: 60000, // Give the initial connection more time
-    tls: true // Explicitly enable TLS
+    serverSelectionTimeoutMS: 60000, 
+    connectTimeoutMS: 60000, 
+    tls: true 
 })
     .then(() => console.log('MongoDB connected successfully.'))
     .catch(err => {
         console.error('MongoDB connection error:', err);
-        // Depending on your strategy, you might want to exit or try reconnecting
-        // For serverless, an error here might indicate a config issue, so exiting is reasonable
-        // process.exit(1);
     });
+*/
+
+const connectDB = async () => {
+    // readyState: 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
+    if (mongoose.connection.readyState >= 1) {
+        return;
+    }
+    try {
+        console.log('Connecting to MongoDB for new invocation...');
+        await mongoose.connect(mongoURI, {
+            serverSelectionTimeoutMS: 5000, 
+            connectTimeoutMS: 10000,
+            tls: true
+        });
+        console.log('MongoDB connected for this invocation.');
+    } catch (err) {
+        console.error('MongoDB connection error during connectDB:', err);
+        throw new Error("Database connection failed.");
+    }
+};
 // --- End MongoDB Connection ---
 
 // --- Mongoose Schemas and Models ---
@@ -157,6 +175,7 @@ app.get('/', (req, res) => {
 
 // Serve index.html (chat page) on the /chat route
 app.get('/chat', async (req, res) => {
+  await connectDB();
   const { groupId, groupName } = req.query;
 
   if (!req.session.user || !req.session.user.email) {
@@ -219,6 +238,7 @@ app.get('/delete-account', (req, res) => {
 
 // --- NEW: Handle Change Password Form Submission ---
 app.post('/change-password', async (req, res) => {
+    await connectDB();
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ success: false, message: 'Not logged in. Please log in again.' });
     }
@@ -264,6 +284,7 @@ app.post('/change-password', async (req, res) => {
 
 // --- NEW: Handle Account Deletion --- 
 app.post('/delete-account', async (req, res) => {
+    await connectDB();
     // 1. Check if user is logged in
     if (!req.session.user || !req.session.user.email) {
         // If this fails, it returns a 401 status
@@ -357,6 +378,7 @@ app.get('/api/user', (req, res) => {
 
 // --- NEW: API Endpoint to Change Username ---
 app.post('/api/user/change-username', async (req, res) => {
+    await connectDB();
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ success: false, message: 'Not authenticated. Please log in again.' });
     }
@@ -443,6 +465,7 @@ app.post('/api/user/change-username', async (req, res) => {
 
 // Handle login attempts
 app.post('/login', async (req, res) => {
+  await connectDB();
   const { email, password } = req.body;
   console.log(`Login attempt for email: ${email}`); // Log the email
 
@@ -509,6 +532,7 @@ app.get('/register', (req, res) => {
 });
 
 app.post('/register', async (req, res) => {
+  await connectDB();
   const { email, username, password, confirmPassword } = req.body;
   const saltRounds = 10;
   console.log(`Registration attempt: Email: ${email}, Username: ${username}`); // Added log
@@ -569,6 +593,7 @@ app.post('/register', async (req, res) => {
 
 // Helper function to generate a simple join code
 async function generateJoinCode(length = 6) { // Marked async as it will check DB
+    await connectDB();
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
     for (let i = 0; i < length; i++) {
@@ -585,6 +610,7 @@ async function generateJoinCode(length = 6) { // Marked async as it will check D
 }
 
 app.post('/api/groups/create', async (req, res) => { // Marked async
+    await connectDB();
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -629,6 +655,7 @@ app.post('/api/groups/create', async (req, res) => { // Marked async
 });
 
 app.post('/api/groups/join', async (req, res) => { // Marked async
+    await connectDB();
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -679,6 +706,7 @@ app.post('/api/groups/join', async (req, res) => { // Marked async
 });
 
 app.get('/api/user/groups', async (req, res) => { // Marked async
+    await connectDB();
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -702,6 +730,7 @@ app.get('/api/user/groups', async (req, res) => { // Marked async
 });
 
 app.get('/api/groups/:groupId/members', async (req, res) => { // Marked async
+    await connectDB();
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -736,6 +765,7 @@ app.get('/api/groups/:groupId/members', async (req, res) => { // Marked async
 
 // --- NEW: API Endpoint for Leaving a Group ---
 app.post('/api/groups/:groupId/leave', async (req, res) => { // Marked async
+    await connectDB();
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -784,6 +814,7 @@ app.post('/api/groups/:groupId/leave', async (req, res) => { // Marked async
 
 // --- NEW: API Endpoint for Deleting a Group (Admin Only) ---
 app.delete('/api/groups/:groupId/delete', async (req, res) => { // Marked async
+    await connectDB();
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ success: false, message: 'User not authenticated' });
     }
@@ -839,6 +870,7 @@ io.engine.use(sessionMiddleware);
 // const privateChatRooms = {}; // This might need to be re-evaluated in context of groups
 
 io.on('connection', async (socket) => { // Marked async for User lookup
+  await connectDB();
   const session = socket.request.session;
   let userEmail = 'Anonymous'; // Keep email for unique ID
   let username = 'Anonymous';  // Add username for display
@@ -886,6 +918,7 @@ io.on('connection', async (socket) => { // Marked async for User lookup
 
   // --- Handle Start Private Chat --- (Needs to be group-aware or re-evaluated)
   socket.on('start_private_chat', async (data) => {
+    await connectDB();
     const initiatorEmail = userEmail;
     const initiatorUsername = username; 
     const targetEmail = data.targetUserEmail;
