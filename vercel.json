@@ -5,6 +5,15 @@
     }
   },
   "rewrites": [
-    { "source": "/(.*)", "destination": "/api/server.js" }
+    { "source": "/socket.io/(.*)", "destination": "/api/server.js" },
+    { "source": "/api/(.*)", "destination": "/api/server.js" },
+    { "source": "/chat", "destination": "/api/server.js" },
+    { "source": "/groups", "destination": "/api/server.js" },
+    { "source": "/register", "destination": "/api/server.js" },
+    { "source": "/login", "destination": "/api/server.js" },
+    { "source": "/logout", "destination": "/api/server.js" },
+    { "source": "/change-password", "destination": "/api/server.js" },
+    { "source": "/delete-account", "destination": "/api/server.js" },
+    { "source": "/", "destination": "/api/server.js" }
   ]
 } 
