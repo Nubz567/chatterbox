@@ -101,7 +101,13 @@ const app = express();
 app.set('trust proxy', 1);
 
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, {
+  cors: {
+    origin: "https://chatterbox-blond.vercel.app", // Explicitly allow your frontend URL
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 
