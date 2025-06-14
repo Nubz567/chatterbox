@@ -159,10 +159,9 @@ app.use(sessionMiddleware);
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json()); // <-- ADDED: Middleware to parse JSON request bodies for API routes
 
-/* This middleware is now redundant because Vercel handles static file serving based on the `builds` configuration in `vercel.json`.
-   Keeping it was causing conflicts with page routing.
+// Serve static files from the "public" directory
+// This MUST come before the dynamic page routes.
 app.use(express.static(path.join(__dirname, '../public')));
-*/
 
 // Example of setting CSP headers
 app.use((req, res, next) => {
