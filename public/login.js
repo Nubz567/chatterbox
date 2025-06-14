@@ -47,14 +47,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     credentials: 'include' // Important for sessions
                 });
 
-                const result = await response.json();
+                const responseText = await response.text();
+                let result;
+
+                try {
+                    result = JSON.parse(responseText);
+                } catch (e) {
+                    console.error("Failed to parse server response as JSON:", responseText);
+                    if (!response.ok) {
+                        // For 500 errors, etc., where the response is not JSON
+                        showMessage(errorDiv, 'A server error occurred. Please try again later.', true);
+                    } else {
+                        // For 200 OK responses with non-JSON body
+                        showMessage(errorDiv, 'Received an unreadable response from the server.', true);
+                    }
+                    return; // Stop processing
+                }
 
                 if (response.ok && result.success) {
                     showMessage(successDiv, result.message, false);
                     if (result.redirectTo) {
                         window.location.href = result.redirectTo;
                     } else {
-                        // Fallback if redirectTo is not provided, though it should be
+                        // Fallback if redirectTo is not provided
                         window.location.href = '/groups'; 
                     }
                 } else {
@@ -62,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (error) {
                 console.error('Login submission error:', error);
-                showMessage(errorDiv, 'An unexpected error occurred during login. Please check console.', true);
+                showMessage(errorDiv, 'An unexpected error occurred during login. Please check your network connection.', true);
             }
         });
     }
