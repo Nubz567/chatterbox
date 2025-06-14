@@ -597,12 +597,12 @@ app.post('/api/groups/create', async (req, res) => { // Marked async
 
     const adminEmail = req.session.user.email;
     // Generate a unique ID (Mongoose will add _id, we can use that or keep this) - let's keep for now if frontend uses 'id'
-    // const groupId = generateUniqueId(); // Use Mongoose _id instead
+    const groupId = generateUniqueId(); // Use Mongoose _id instead
     const joinCode = await generateJoinCode(); // Await join code generation
 
     try {
         const newGroup = new Group({
-            // id: groupId, // Mongoose provides _id
+            id: groupId, // Mongoose provides _id
         name: name.trim(),
         adminEmail: adminEmail,
         joinCode: joinCode,
@@ -610,10 +610,10 @@ app.post('/api/groups/create', async (req, res) => { // Marked async
         });
 
         const savedGroup = await newGroup.save(); // Save to database
-        console.log(`Group created: ${savedGroup.name} (ID: ${savedGroup._id}), Code: ${savedGroup.joinCode} by ${adminEmail}`);
+        console.log(`Group created: ${savedGroup.name} (ID: ${savedGroup.id}), Code: ${savedGroup.joinCode} by ${adminEmail}`);
         // Return the saved group object, including the Mongoose-generated _id
         res.status(201).json({ 
-            id: savedGroup._id, // Use _id as the group ID for the frontend
+            id: savedGroup.id, // Use _id as the group ID for the frontend
             name: savedGroup.name,
             adminEmail: savedGroup.adminEmail,
             joinCode: savedGroup.joinCode,
