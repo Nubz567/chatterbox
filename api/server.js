@@ -14,45 +14,48 @@ const bcrypt = require('bcrypt');
 const mongoose = require('mongoose'); // Require Mongoose
 const MongoStore = require('connect-mongo');
 
-// --- MongoDB Connection ---
+// --- NEW: Serverless-Compatible MongoDB Connection ---
 const mongoURI = process.env.MONGODB_URI;
-
 if (!mongoURI) {
-    console.error('FATAL ERROR: MONGODB_URI is not defined in environment variables.');
-    process.exit(1); // Exit the process if URI is not set
+    throw new Error('FATAL ERROR: MONGODB_URI is not defined in environment variables.');
 }
 
-/* DEPRECATED for serverless: This connection logic is moved to an on-demand function.
-mongoose.connect(mongoURI, {
-    serverSelectionTimeoutMS: 60000, 
-    connectTimeoutMS: 60000, 
-    tls: true 
-})
-    .then(() => console.log('MongoDB connected successfully.'))
-    .catch(err => {
-        console.error('MongoDB connection error:', err);
-    });
-*/
+// Using a global variable to cache the connection promise.
+// This is the recommended pattern for serverless environments.
+let cachedConnection = global.mongoose_connection;
 
-const connectDB = async () => {
-    // readyState: 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
-    if (mongoose.connection.readyState >= 1) {
-        return;
+if (!cachedConnection) {
+    cachedConnection = global.mongoose_connection = { conn: null, promise: null };
+}
+
+async function connectToDatabase() {
+    if (cachedConnection.conn) {
+        console.log('Using cached database connection.');
+        return cachedConnection.conn;
     }
-    try {
-        console.log('Connecting to MongoDB for new invocation...');
-        await mongoose.connect(mongoURI, {
-            serverSelectionTimeoutMS: 5000, 
-            connectTimeoutMS: 10000,
-            tls: true
+
+    if (!cachedConnection.promise) {
+        console.log('Creating new database connection promise.');
+        cachedConnection.promise = mongoose.connect(mongoURI, {
+            bufferCommands: false, // Recommended for serverless
+            serverSelectionTimeoutMS: 5000,
+        }).then(mongooseInstance => {
+            console.log('Mongoose connection promise resolved.');
+            return mongooseInstance;
         });
-        console.log('MongoDB connected for this invocation.');
-    } catch (err) {
-        console.error('MongoDB connection error during connectDB:', err);
-        throw new Error("Database connection failed.");
     }
-};
-// --- End MongoDB Connection ---
+
+    try {
+        console.log('Awaiting database connection promise.');
+        cachedConnection.conn = await cachedConnection.promise;
+        return cachedConnection.conn;
+    } catch (e) {
+        cachedConnection.promise = null; // On error, reset the promise to allow retry
+        console.error('An error occurred while connecting to MongoDB', e);
+        throw new Error('Database connection failed.');
+    }
+}
+// --- END NEW CONNECTION LOGIC ---
 
 // --- Mongoose Schemas and Models ---
 const userSchema = new mongoose.Schema({
@@ -138,7 +141,7 @@ const sessionMiddleware = session({
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI, // Use the MongoDB connection string
+    clientPromise: connectToDatabase().then(mongooseInstance => mongooseInstance.connection.getClient()),
     collectionName: 'sessions', // Name of the collection to store sessions
     ttl: 14 * 24 * 60 * 60 // Session TTL in seconds (e.g., 14 days)
   }),
@@ -175,7 +178,6 @@ app.get('/', (req, res) => {
 
 // Serve index.html (chat page) on the /chat route
 app.get('/chat', async (req, res) => {
-  await connectDB();
   const { groupId, groupName } = req.query;
 
   if (!req.session.user || !req.session.user.email) {
@@ -183,26 +185,20 @@ app.get('/chat', async (req, res) => {
   }
 
   if (!groupId) {
-    console.log('Attempt to access /chat without groupId');
     return res.redirect('/groups?error=No+group+selected');
   }
 
-  const group = await Group.findOne({ id: groupId }); // Get group from DB, not in-memory store
+  const group = await Group.findOne({ id: groupId });
 
   if (!group) {
-    console.log(`Attempt to access non-existent group: ${groupId}`);
     return res.redirect('/groups?error=Group+not+found');
   }
 
   if (!group.members.includes(req.session.user.email)) {
-    console.log(`User ${req.session.user.email} attempted to access group ${groupId} they are not a member of.`);
     return res.redirect('/groups?error=Not+a+member+of+this+group');
   }
 
-  // User is logged in, groupId is valid, and user is a member. Store in session.
-  req.session.currentGroup = { id: groupId, name: groupName || group.name }; // Use provided groupName or fallback to stored name
-  console.log(`User ${req.session.user.email} entering chat for group: ${req.session.currentGroup.name} (ID: ${groupId})`);
-  
+  req.session.currentGroup = { id: groupId, name: groupName || group.name };
   res.sendFile(path.join(__dirname, '../public', 'index.html'));
 });
 
@@ -238,7 +234,6 @@ app.get('/delete-account', (req, res) => {
 
 // --- NEW: Handle Change Password Form Submission ---
 app.post('/change-password', async (req, res) => {
-    await connectDB();
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ success: false, message: 'Not logged in. Please log in again.' });
     }
@@ -284,8 +279,6 @@ app.post('/change-password', async (req, res) => {
 
 // --- NEW: Handle Account Deletion --- 
 app.post('/delete-account', async (req, res) => {
-    await connectDB();
-    // 1. Check if user is logged in
     if (!req.session.user || !req.session.user.email) {
         // If this fails, it returns a 401 status
         return res.status(401).json({ success: false, message: 'Not logged in. Please log in again.' });
@@ -378,7 +371,6 @@ app.get('/api/user', (req, res) => {
 
 // --- NEW: API Endpoint to Change Username ---
 app.post('/api/user/change-username', async (req, res) => {
-    await connectDB();
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ success: false, message: 'Not authenticated. Please log in again.' });
     }
@@ -465,7 +457,6 @@ app.post('/api/user/change-username', async (req, res) => {
 
 // Handle login attempts
 app.post('/login', async (req, res) => {
-  await connectDB();
   const { email, password } = req.body;
   console.log(`Login attempt for email: ${email}`); // Log the email
 
@@ -532,7 +523,6 @@ app.get('/register', (req, res) => {
 });
 
 app.post('/register', async (req, res) => {
-  await connectDB();
   const { email, username, password, confirmPassword } = req.body;
   const saltRounds = 10;
   console.log(`Registration attempt: Email: ${email}, Username: ${username}`); // Added log
@@ -593,7 +583,6 @@ app.post('/register', async (req, res) => {
 
 // Helper function to generate a simple join code
 async function generateJoinCode(length = 6) { // Marked async as it will check DB
-    await connectDB();
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
     for (let i = 0; i < length; i++) {
@@ -610,7 +599,6 @@ async function generateJoinCode(length = 6) { // Marked async as it will check D
 }
 
 app.post('/api/groups/create', async (req, res) => { // Marked async
-    await connectDB();
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -655,7 +643,6 @@ app.post('/api/groups/create', async (req, res) => { // Marked async
 });
 
 app.post('/api/groups/join', async (req, res) => { // Marked async
-    await connectDB();
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -706,7 +693,6 @@ app.post('/api/groups/join', async (req, res) => { // Marked async
 });
 
 app.get('/api/user/groups', async (req, res) => { // Marked async
-    await connectDB();
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -730,7 +716,6 @@ app.get('/api/user/groups', async (req, res) => { // Marked async
 });
 
 app.get('/api/groups/:groupId/members', async (req, res) => { // Marked async
-    await connectDB();
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -765,7 +750,6 @@ app.get('/api/groups/:groupId/members', async (req, res) => { // Marked async
 
 // --- NEW: API Endpoint for Leaving a Group ---
 app.post('/api/groups/:groupId/leave', async (req, res) => { // Marked async
-    await connectDB();
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -814,7 +798,6 @@ app.post('/api/groups/:groupId/leave', async (req, res) => { // Marked async
 
 // --- NEW: API Endpoint for Deleting a Group (Admin Only) ---
 app.delete('/api/groups/:groupId/delete', async (req, res) => { // Marked async
-    await connectDB();
     if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ success: false, message: 'User not authenticated' });
     }
@@ -870,7 +853,6 @@ io.engine.use(sessionMiddleware);
 // const privateChatRooms = {}; // This might need to be re-evaluated in context of groups
 
 io.on('connection', async (socket) => { // Marked async for User lookup
-  await connectDB();
   const session = socket.request.session;
   let userEmail = 'Anonymous'; // Keep email for unique ID
   let username = 'Anonymous';  // Add username for display
@@ -918,7 +900,6 @@ io.on('connection', async (socket) => { // Marked async for User lookup
 
   // --- Handle Start Private Chat --- (Needs to be group-aware or re-evaluated)
   socket.on('start_private_chat', async (data) => {
-    await connectDB();
     const initiatorEmail = userEmail;
     const initiatorUsername = username; 
     const targetEmail = data.targetUserEmail;
