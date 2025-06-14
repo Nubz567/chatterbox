@@ -265,22 +265,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 showMessage(createGroupMessage, 'Group name cannot be empty.', true);
                 return;
             }
+
+            let response; // Make response available in the catch block
+
             try {
-                const response = await fetch('/api/groups/create', {
+                response = await fetch('/api/groups/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name: groupName }),
                     credentials: 'include'
                 });
-                const data = await response.json();
-                if (!response.ok) {
-                    throw new Error(data.error || 'Failed to create group');
+
+                const responseText = await response.text();
+                let data;
+
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    console.error("Failed to parse server response as JSON:", responseText);
+                    if (!response.ok) {
+                        throw new Error(`Server error: ${response.status} ${response.statusText}. Check console for response body.`);
+                    }
+                    throw new Error("Received an unreadable response from the server.");
                 }
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to create group');
+                }
+
                 showMessage(createGroupMessage, `Group "${escapeHTML(data.name)}" created! Join Code: ${data.joinCode}`, false);
                 newGroupNameInput.value = '';
                 fetchUserGroups(); 
             } catch (error) {
                 console.error('Error creating group:', error);
+                // We're now throwing more descriptive errors, so this should be more helpful.
                 showMessage(createGroupMessage, error.message, true);
             }
         });
