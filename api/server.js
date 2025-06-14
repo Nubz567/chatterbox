@@ -159,10 +159,8 @@ app.use(sessionMiddleware);
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json()); // <-- ADDED: Middleware to parse JSON request bodies for API routes
 
-/* This middleware is now correctly handled by Vercel's build and routing configuration.
-   It is no longer needed here.
+// Serve static files from the "public" directory
 app.use(express.static(path.join(__dirname, '../public')));
-*/
 
 // Example of setting CSP headers
 app.use((req, res, next) => {
@@ -500,21 +498,19 @@ app.post('/login', async (req, res) => {
 });
 
 // --- Logout Route ---
-app.post('/logout', (req, res) => {
+app.get('/logout', (req, res) => {
   if (req.session.user) {
     const userEmail = req.session.user.email;
     req.session.destroy((err) => {
       if (err) {
         console.error('Session destruction error:', err);
-        // Optionally send an error response or redirect to an error page
-        return res.redirect('/chat'); // Or wherever makes sense on error
+        return res.redirect('/groups'); // Redirect to a safe page on error
       }
       console.log(`User ${userEmail} logged out.`);
-      res.clearCookie('connect.sid'); // Optional: clear the session cookie
-      res.redirect('/'); // Redirect to login page
+      res.clearCookie('connect.sid'); 
+      res.redirect('/'); 
     });
   } else {
-    // If no session, just redirect to login
     res.redirect('/');
   }
 });
