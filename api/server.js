@@ -1012,3 +1012,5 @@ io.on('connection', async (socket) => { // Marked async for User lookup
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
+
+module.exports = server;
