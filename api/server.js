@@ -498,20 +498,23 @@ app.post('/login', async (req, res) => {
 });
 
 // --- Logout Route ---
-app.get('/logout', (req, res) => {
+app.post('/logout', (req, res) => {
   if (req.session.user) {
     const userEmail = req.session.user.email;
     req.session.destroy((err) => {
       if (err) {
         console.error('Session destruction error:', err);
-        return res.redirect('/groups'); // Redirect to a safe page on error
+        // Fallback to still try and redirect client
+        res.status(500).json({ success: false, message: 'Logout failed, please clear your cookies.', redirectTo: '/' });
+        return;
       }
       console.log(`User ${userEmail} logged out.`);
-      res.clearCookie('connect.sid'); 
-      res.redirect('/'); 
+      res.clearCookie('connect.sid');
+      res.status(200).json({ success: true, message: 'Logged out successfully', redirectTo: '/' });
     });
   } else {
-    res.redirect('/');
+    // If no session, just send a success response with redirect info
+    res.status(200).json({ success: true, message: 'No active session, already logged out', redirectTo: '/' });
   }
 });
 

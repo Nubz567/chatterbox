@@ -276,10 +276,6 @@ document.addEventListener('DOMContentLoaded', () => {
         backToGroupsLink.innerHTML = '<a href="/groups" style="font-weight: bold; color: #007bff; display: block; padding: 5px 0; text-decoration: none;">⬅️ Back to All Groups</a>';
         backToGroupsLink.style.borderBottom = '1px solid #eee';
         backToGroupsLink.style.marginBottom = '10px';
-        backToGroupsLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            window.location.href = '/groups';
-        });
         userList.appendChild(backToGroupsLink);
 
         // Add "Members in this group:" title
