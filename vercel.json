@@ -1,19 +1,25 @@
 {
-  "functions": {
-    "api/server.js": {
-      "maxDuration": 60
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/server.js",
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 60
+      }
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
     }
-  },
-  "rewrites": [
-    { "source": "/socket.io/(.*)", "destination": "/api/server.js" },
-    { "source": "/api/(.*)", "destination": "/api/server.js" },
-    { "source": "/chat", "destination": "/api/server.js" },
-    { "source": "/groups", "destination": "/api/server.js" },
-    { "source": "/register", "destination": "/api/server.js" },
-    { "source": "/login", "destination": "/api/server.js" },
-    { "source": "/logout", "destination": "/api/server.js" },
-    { "source": "/change-password", "destination": "/api/server.js" },
-    { "source": "/delete-account", "destination": "/api/server.js" },
-    { "source": "/", "destination": "/api/server.js" }
+  ],
+  "routes": [
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/server.js"
+    }
   ]
 } 
