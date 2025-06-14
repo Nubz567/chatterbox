@@ -70,7 +70,7 @@ const groupMessageHistories = {}; // { groupId: [messages] }
 const groupActiveUsers = {};    // { groupId: Set(userEmail) }
 
 // --- NEW: In-memory store for Groups ---
-const groups = {}; // Store groups, keyed by a unique group ID
+// const groups = {}; // THIS IS DEPRECATED AND REMOVED. DATABASE IS THE SOURCE OF TRUTH.
                  // Example group: { id: 'uuid', name: 'Cool Group', adminEmail: 'user@example.com', joinCode: 'XYZ123', members: ['user@example.com'] }
 
 // Helper function to generate unique IDs (simple version for now)
@@ -149,7 +149,7 @@ app.get('/', (req, res) => {
 });
 
 // Serve index.html (chat page) on the /chat route
-app.get('/chat', (req, res) => {
+app.get('/chat', async (req, res) => {
   const { groupId, groupName } = req.query;
 
   if (!req.session.user || !req.session.user.email) {
@@ -161,7 +161,7 @@ app.get('/chat', (req, res) => {
     return res.redirect('/groups?error=No+group+selected');
   }
 
-  const group = groups[groupId]; // Get group from our in-memory store
+  const group = await Group.findOne({ id: groupId }); // Get group from DB, not in-memory store
 
   if (!group) {
     console.log(`Attempt to access non-existent group: ${groupId}`);
@@ -290,37 +290,29 @@ app.post('/delete-account', async (req, res) => {
         }
 
         // If all above checks pass, it should reach here:
-        await user.remove();
+        await User.deleteOne({ email: userEmail }); // Correctly use deleteOne, .remove() is deprecated
         console.log(`Account deleted successfully for user: ${userEmail}`);
-        console.log('Current users:', await User.find());
+        
+        // --- NEW: Mark groups associated with the deleted user by querying the database ---
+        const userGroups = await Group.find({ members: userEmail });
 
-        // --- NEW: Mark groups associated with the deleted user ---
-        for (const groupId in groups) {
-            if (groups.hasOwnProperty(groupId)) {
-                const group = groups[groupId];
-                const wasMember = group.members.includes(userEmail);
-                const wasAdmin = group.adminEmail === userEmail;
+        for (const group of userGroups) {
+            const wasAdmin = group.adminEmail === userEmail;
 
-                if (wasMember || wasAdmin) {
-                    group.archivedDueToUserDeletion = true;
-                    console.log(`Group "${group.name}" (ID: ${groupId}) marked as archived due to deletion of user ${userEmail}.`);
-                    // If admin deleted, and no other members, group is effectively orphaned.
-                    // If admin deleted, and other members exist, one could be promoted or group stays admin-less.
-                    // For now, just marking as archived. Future logic could handle admin reassignment or auto-deletion if empty.
-                }
-                
-                // Remove the deleted user from the members list specifically
-                if (wasMember) {
-                    const memberIndex = group.members.indexOf(userEmail);
-                    if (memberIndex > -1) {
-                        group.members.splice(memberIndex, 1);
-                        console.log(`User ${userEmail} removed from members list of group "${group.name}" (ID: ${groupId}).`);
-                    }
-                }
-                 // If the deleted user was the admin, and the group becomes empty,
-                // it will remain archived. If other members exist, it's archived but admin-less.
-                // The requirement is just to hide it until join code is used, so this is sufficient.
+            // Mark the group as archived
+            group.archivedDueToUserDeletion = true;
+            console.log(`Group "${group.name}" (ID: ${group.id}) marked as archived due to deletion of user ${userEmail}.`);
+
+            // Remove the user from the members list
+            const memberIndex = group.members.indexOf(userEmail);
+            if (memberIndex > -1) {
+                group.members.splice(memberIndex, 1);
+                console.log(`User ${userEmail} removed from members list of group "${group.name}" (ID: ${group.id}).`);
             }
+            
+            // If the admin was deleted, the group is now admin-less but archived.
+            // This is sufficient based on the requirement to hide it until a join code is used.
+            await group.save(); // Save the changes to the group
         }
         // --- End NEW ---
 
