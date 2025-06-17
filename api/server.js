@@ -213,7 +213,13 @@ app.get('/chat', async (req, res) => {
     }
 
     req.session.currentGroup = { id: groupId, name: groupName || group.name };
-    res.sendFile(path.join(__dirname, '../public', 'chat.html'));
+    req.session.save((err) => {
+      if (err) {
+          console.error('Error saving session:', err);
+          return res.status(500).send('Error preparing chat session.');
+      }
+      res.sendFile(path.join(__dirname, '../public', 'chat.html'));
+    });
   } catch (error) {
     console.error('Error loading chat page:', error);
     res.status(500).send('Error loading chat page. <a href="/groups">Go back to groups</a>');
