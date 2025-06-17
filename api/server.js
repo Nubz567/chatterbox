@@ -316,57 +316,52 @@ app.post('/delete-account', async (req, res) => {
             return res.status(404).json({ success: false, message: 'User not found. Please log in again.' });
         }
 
-        try {
-            // 4. Compare the provided password with the stored hash
-            const isMatch = await bcrypt.compare(password, user.hashedPassword);
-            console.log(`Password match for ${userEmail}: ${isMatch}`);
-            if (!isMatch) {
-                // If passwords don't match, it returns a 400 status
-                return res.status(400).json({ success: false, message: 'Incorrect password.' });
-            }
-
-            // If all above checks pass, it should reach here:
-            await User.deleteOne({ email: userEmail }); // Correctly use deleteOne, .remove() is deprecated
-            console.log(`Account deleted successfully for user: ${userEmail}`);
-            
-            // --- NEW: Mark groups associated with the deleted user by querying the database ---
-            const userGroups = await Group.find({ members: userEmail });
-
-            for (const group of userGroups) {
-                const wasAdmin = group.adminEmail === userEmail;
-
-                // Mark the group as archived
-                group.archivedDueToUserDeletion = true;
-                console.log(`Group "${group.name}" (ID: ${group.id}) marked as archived due to deletion of user ${userEmail}.`);
-
-                // Remove the user from the members list
-                const memberIndex = group.members.indexOf(userEmail);
-                if (memberIndex > -1) {
-                    group.members.splice(memberIndex, 1);
-                    console.log(`User ${userEmail} removed from members list of group "${group.name}" (ID: ${group.id}).`);
-                }
-                
-                // If the admin was deleted, the group is now admin-less but archived.
-                // This is sufficient based on the requirement to hide it until a join code is used.
-                await group.save(); // Save the changes to the group
-            }
-            // --- End NEW ---
-
-            req.session.destroy((err) => {
-                if (err) {
-                    console.error('Session destruction error during account deletion:', err);
-                    return res.status(500).json({ success: false, message: 'Account deleted, but an error occurred during logout. Please clear your cookies.'});
-                }
-                res.clearCookie('connect.sid');
-                return res.status(200).json({ success: true, message: 'Account deleted successfully. You have been logged out.' });
-            });
-
-        } catch (error) {
-            // 5. Catch any errors during bcrypt.compare or other operations
-            console.error("Error during account deletion processing:", error);
-            return res.status(500).json({ success: false, message: 'An error occurred while deleting your account. Please try again.' });
+        // 4. Compare the provided password with the stored hash
+        const isMatch = await bcrypt.compare(password, user.hashedPassword);
+        console.log(`Password match for ${userEmail}: ${isMatch}`);
+        if (!isMatch) {
+            // If passwords don't match, it returns a 400 status
+            return res.status(400).json({ success: false, message: 'Incorrect password.' });
         }
+
+        // If all above checks pass, it should reach here:
+        await User.deleteOne({ email: userEmail }); // Correctly use deleteOne, .remove() is deprecated
+        console.log(`Account deleted successfully for user: ${userEmail}`);
+        
+        // --- NEW: Mark groups associated with the deleted user by querying the database ---
+        const userGroups = await Group.find({ members: userEmail });
+
+        for (const group of userGroups) {
+            const wasAdmin = group.adminEmail === userEmail;
+
+            // Mark the group as archived
+            group.archivedDueToUserDeletion = true;
+            console.log(`Group "${group.name}" (ID: ${group.id}) marked as archived due to deletion of user ${userEmail}.`);
+
+            // Remove the user from the members list
+            const memberIndex = group.members.indexOf(userEmail);
+            if (memberIndex > -1) {
+                group.members.splice(memberIndex, 1);
+                console.log(`User ${userEmail} removed from members list of group "${group.name}" (ID: ${group.id}).`);
+            }
+            
+            // If the admin was deleted, the group is now admin-less but archived.
+            // This is sufficient based on the requirement to hide it until a join code is used.
+            await group.save(); // Save the changes to the group
+        }
+        // --- End NEW ---
+
+        req.session.destroy((err) => {
+            if (err) {
+                console.error('Session destruction error during account deletion:', err);
+                return res.status(500).json({ success: false, message: 'Account deleted, but an error occurred during logout. Please clear your cookies.'});
+            }
+            res.clearCookie('connect.sid');
+            return res.status(200).json({ success: true, message: 'Account deleted successfully. You have been logged out.' });
+        });
+
     } catch (error) {
+        // 5. Catch any errors during bcrypt.compare or other operations
         console.error("Error during account deletion processing:", error);
         return res.status(500).json({ success: false, message: 'An error occurred while deleting your account. Please try again.' });
     }
@@ -583,23 +578,17 @@ app.post('/register', async (req, res) => {
       // return res.redirect('/register?error=username_exists');
     }
 
-    try {
-      const hashedPassword = await bcrypt.hash(password, saltRounds);
-      // THIS PUSH IS TO THE IN-MEMORY ARRAY
-      const newUser = new User({ email, username, hashedPassword });
-      await newUser.save();
-      
-      console.log(`New user registered (in database): ${email}, Username: ${username}`);
-      console.log('Current users (in database):', await User.find());
-      
-      // res.redirect('/?success=registered');
-      res.status(201).json({ success: true, message: 'Registration successful! Please log in.', redirectTo: '/login'});
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    // THIS PUSH IS TO THE IN-MEMORY ARRAY
+    const newUser = new User({ email, username, hashedPassword });
+    await newUser.save();
+    
+    console.log(`New user registered (in database): ${email}, Username: ${username}`);
+    console.log('Current users (in database):', await User.find());
+    
+    // res.redirect('/?success=registered');
+    res.status(201).json({ success: true, message: 'Registration successful! Please log in.', redirectTo: '/login'});
 
-    } catch (error) {
-      console.error("Error during registration hashing/storing:", error);
-      // res.redirect('/register?error=registration_failed');
-      res.status(500).json({ success: false, message: 'Error during registration process'});
-    }
   } catch (error) {
     console.error("Error during registration:", error);
     res.status(500).json({ success: false, message: 'An error occurred during registration. Please try again.' });
@@ -642,33 +631,24 @@ app.post('/api/groups/create', async (req, res) => { // Marked async
         const groupId = generateUniqueId(); // Use Mongoose _id instead
         const joinCode = await generateJoinCode(); // Await join code generation
 
-        try {
-            const newGroup = new Group({
-                id: groupId, // Mongoose provides _id
-            name: name.trim(),
-            adminEmail: adminEmail,
-            joinCode: joinCode,
-            members: [adminEmail] // Creator is the first member
-            });
+        const newGroup = new Group({
+            id: groupId, // Mongoose provides _id
+        name: name.trim(),
+        adminEmail: adminEmail,
+        joinCode: joinCode,
+        members: [adminEmail] // Creator is the first member
+        });
 
-            const savedGroup = await newGroup.save(); // Save to database
-            console.log(`Group created: ${savedGroup.name} (ID: ${savedGroup.id}), Code: ${savedGroup.joinCode} by ${adminEmail}`);
-            // Return the saved group object, including the Mongoose-generated _id
-            res.status(201).json({ 
-                id: savedGroup.id, // Use _id as the group ID for the frontend
-                name: savedGroup.name,
-                adminEmail: savedGroup.adminEmail,
-                joinCode: savedGroup.joinCode,
-                members: savedGroup.members
-            });
-        } catch (error) {
-            console.error('Error creating group:', error);
-            // Handle potential duplicate join code error if generateJoinCode didn't catch it (Mongoose unique index)
-            if (error.code === 11000) { // MongoDB duplicate key error code
-                return res.status(400).json({ error: 'Failed to generate unique join code. Please try again.' });
-            }
-            res.status(500).json({ error: 'An error occurred while creating the group.' });
-        }
+        const savedGroup = await newGroup.save(); // Save to database
+        console.log(`Group created: ${savedGroup.name} (ID: ${savedGroup.id}), Code: ${savedGroup.joinCode} by ${adminEmail}`);
+        // Return the saved group object, including the Mongoose-generated _id
+        res.status(201).json({ 
+            id: savedGroup.id, // Use _id as the group ID for the frontend
+            name: savedGroup.name,
+            adminEmail: savedGroup.adminEmail,
+            joinCode: savedGroup.joinCode,
+            members: savedGroup.members
+        });
     } catch (error) {
         console.error("Error during group creation:", error);
         res.status(500).json({ error: 'An error occurred while creating the group.' });
@@ -689,42 +669,37 @@ app.post('/api/groups/join', async (req, res) => { // Marked async
 
         const userEmail = req.session.user.email;
         
-        try {
-            // Find the group by join code
-            const targetGroup = await Group.findOne({ joinCode: joinCode.trim() });
+        // Find the group by join code
+        const targetGroup = await Group.findOne({ joinCode: joinCode.trim() });
 
         if (!targetGroup) {
             return res.status(404).json({ error: 'Group not found with this join code' });
         }
 
-            // --- NEW: If group was archived, unarchive it upon successful join via code ---
-            if (targetGroup.archivedDueToUserDeletion) {
-                targetGroup.archivedDueToUserDeletion = false;
-                console.log(`Group "${targetGroup.name}" (ID: ${targetGroup._id}) was archived and is now restored by user ${userEmail} joining with code.`);
-            }
-            // --- End NEW ---
+        // --- NEW: If group was archived, unarchive it upon successful join via code ---
+        if (targetGroup.archivedDueToUserDeletion) {
+            targetGroup.archivedDueToUserDeletion = false;
+            console.log(`Group "${targetGroup.name}" (ID: ${targetGroup._id}) was archived and is now restored by user ${userEmail} joining with code.`);
+        }
+        // --- End NEW ---
 
         if (targetGroup.members.includes(userEmail)) {
-                // Save the group even if the user is already a member, in case it was archived and just unarchived
-                 await targetGroup.save(); 
+            // Save the group even if the user is already a member, in case it was archived and just unarchived
+             await targetGroup.save(); 
             return res.status(400).json({ error: 'User is already a member of this group', group: targetGroup });
         }
 
         targetGroup.members.push(userEmail);
-            await targetGroup.save(); // Save the updated group to database
+        await targetGroup.save(); // Save the updated group to database
 
-            console.log(`User ${userEmail} joined group: ${targetGroup.name} (ID: ${targetGroup._id})`);
-            res.status(200).json({
-                id: targetGroup._id, // Use _id for the frontend
-                name: targetGroup.name,
-                adminEmail: targetGroup.adminEmail,
-                joinCode: targetGroup.joinCode,
-                members: targetGroup.members
-            });
-        } catch (error) {
-            console.error('Error joining group:', error);
-            res.status(500).json({ error: 'An error occurred while joining the group.' });
-        }
+        console.log(`User ${userEmail} joined group: ${targetGroup.name} (ID: ${targetGroup._id})`);
+        res.status(200).json({
+            id: targetGroup._id, // Use _id for the frontend
+            name: targetGroup.name,
+            adminEmail: targetGroup.adminEmail,
+            joinCode: targetGroup.joinCode,
+            members: targetGroup.members
+        });
     } catch (error) {
         console.error("Error during group joining:", error);
         res.status(500).json({ error: 'An error occurred while joining the group.' });
@@ -739,21 +714,16 @@ app.get('/api/user/groups', async (req, res) => { // Marked async
         }
         const userEmail = req.session.user.email;
         
-        try {
-            // Find all groups where the user is a member and the group is not archived
-            const memberOfGroups = await Group.find({
-                members: userEmail,
-                archivedDueToUserDeletion: { $ne: true } // Only include groups not archived
-            });
-            
-            // Map to the desired structure if needed, or just return the Mongoose documents
-            // Returning Mongoose docs is usually fine, they behave like objects
+        // Find all groups where the user is a member and the group is not archived
+        const memberOfGroups = await Group.find({
+            members: userEmail,
+            archivedDueToUserDeletion: { $ne: true } // Only include groups not archived
+        });
+        
+        // Map to the desired structure if needed, or just return the Mongoose documents
+        // Returning Mongoose docs is usually fine, they behave like objects
         res.status(200).json(memberOfGroups);
 
-        } catch (error) {
-            console.error('Error fetching user groups:', error);
-            res.status(500).json({ error: 'An error occurred while fetching your groups.' });
-        }
     } catch (error) {
         console.error("Error during fetching user groups:", error);
         res.status(500).json({ error: 'An error occurred while fetching your groups.' });
@@ -770,9 +740,8 @@ app.get('/api/groups/:groupId/members', async (req, res) => { // Marked async
         const userEmail = req.session.user.email;
         const { groupId } = req.params;
         
-        try {
-            // Find the group by its Mongoose _id
-            const group = await Group.findById(groupId);
+        // Find the group by its Mongoose _id
+        const group = await Group.findById(groupId);
 
         if (!group) {
             return res.status(404).json({ error: 'Group not found' });
@@ -783,16 +752,8 @@ app.get('/api/groups/:groupId/members', async (req, res) => { // Marked async
         }
 
         // For privacy, you might only want to return emails or basic info, not full user objects if they existed
-            // If you need usernames, you'd need to fetch User documents based on these emails
+        // If you need usernames, you'd need to fetch User documents based on these emails
         res.status(200).json(group.members);
-        } catch (error) {
-            console.error('Error fetching group members:', error);
-             // Handle potential invalid ObjectId format error
-            if (error.kind === 'ObjectId') {
-                 return res.status(400).json({ error: 'Invalid group ID format.' });
-            }
-            res.status(500).json({ error: 'An error occurred while fetching group members.' });
-        }
     } catch (error) {
         console.error("Error during fetching group members:", error);
         res.status(500).json({ error: 'An error occurred while fetching group members.' });
@@ -810,43 +771,34 @@ app.post('/api/groups/:groupId/leave', async (req, res) => { // Marked async
         const userEmail = req.session.user.email;
         const { groupId } = req.params;
         
-        try {
-            // Find the group by its Mongoose _id
-            const group = await Group.findById(groupId);
+        // Find the group by its Mongoose _id
+        const group = await Group.findById(groupId);
 
-            if (!group) {
-                return res.status(404).json({ error: 'Group not found' });
-            }
-
-            const memberIndex = group.members.indexOf(userEmail);
-            if (memberIndex === -1) {
-                return res.status(400).json({ error: 'User is not a member of this group' });
-            }
-
-            group.members.splice(memberIndex, 1);
-            await group.save(); // Save the updated group to database
-
-            console.log(`User ${userEmail} left group: ${group.name} (ID: ${group._id})`);
-
-            // Optional: Handle if admin leaves and group becomes empty
-            if (group.adminEmail === userEmail && group.members.length === 0) {
-                console.log(`Admin ${userEmail} left group ${group.name} and it is now empty. Deleting group.`);
-                await Group.deleteOne({ _id: groupId }); // Delete empty group if admin leaves
-                console.log(`Group ${group.name} (ID: ${groupId}) was empty after admin left and has been deleted.`);
-            } else if (group.adminEmail === userEmail) {
-                 console.log(`Admin ${userEmail} left group ${group.name}. Group is not empty, remains without admin management.`);
-                 // You might want to reassign admin here in a real app
-            }
-
-            res.status(200).json({ message: `Successfully left group "${group.name}".` });
-        } catch (error) {
-            console.error('Error leaving group:', error);
-             // Handle potential invalid ObjectId format error
-            if (error.kind === 'ObjectId') {
-                 return res.status(400).json({ error: 'Invalid group ID format.' });
-            }
-            res.status(500).json({ error: 'An error occurred while leaving the group.' });
+        if (!group) {
+            return res.status(404).json({ error: 'Group not found' });
         }
+
+        const memberIndex = group.members.indexOf(userEmail);
+        if (memberIndex === -1) {
+            return res.status(400).json({ error: 'User is not a member of this group' });
+        }
+
+        group.members.splice(memberIndex, 1);
+        await group.save(); // Save the updated group to database
+
+        console.log(`User ${userEmail} left group: ${group.name} (ID: ${group._id})`);
+
+        // Optional: Handle if admin leaves and group becomes empty
+        if (group.adminEmail === userEmail && group.members.length === 0) {
+            console.log(`Admin ${userEmail} left group ${group.name} and it is now empty. Deleting group.`);
+            await Group.deleteOne({ _id: groupId }); // Delete empty group if admin leaves
+            console.log(`Group ${group.name} (ID: ${groupId}) was empty after admin left and has been deleted.`);
+        } else if (group.adminEmail === userEmail) {
+             console.log(`Admin ${userEmail} left group ${group.name}. Group is not empty, remains without admin management.`);
+             // You might want to reassign admin here in a real app
+        }
+
+        res.status(200).json({ message: `Successfully left group "${group.name}".` });
     } catch (error) {
         console.error("Error during leaving group:", error);
         res.status(500).json({ error: 'An error occurred while leaving the group.' });
@@ -864,45 +816,36 @@ app.delete('/api/groups/:groupId/delete', async (req, res) => { // Marked async
         const userEmail = req.session.user.email;
         const { groupId } = req.params;
         
-        try {
-            // Find the group by its Mongoose _id
-            const group = await Group.findById(groupId);
+        // Find the group by its Mongoose _id
+        const group = await Group.findById(groupId);
 
-            if (!group) {
-                return res.status(404).json({ success: false, message: 'Group not found' });
-            }
-
-            // Authorization: Only the group admin can delete the group
-            if (group.adminEmail !== userEmail) {
-                return res.status(403).json({ success: false, message: 'You are not authorized to delete this group.' });
-            }
-
-            const groupName = group.name;
-
-            // Proceed with deletion from database
-            await Group.deleteOne({ _id: groupId });
-            // In a real app, you might also want to remove messages associated with this group
-            // and update user documents to remove references to this group if any existed.
-
-            // delete groupMessageHistories[groupId]; // Keep in-memory history independent for now
-            // delete groupActiveUsers[groupId]; // Keep in-memory active users independent for now
-
-            console.log(`Group "${groupName}" (ID: ${groupId}) deleted by admin ${userEmail}.`);
-
-            // Optional: Notify connected clients that this group has been deleted
-            // This allows clients to react, e.g., redirect if they were in that group's chat
-            io.to(groupId).emit('group_deleted', { groupId: groupId, groupName: groupName, message: `Group "${groupName}" has been deleted by the admin.` });
-
-            return res.status(200).json({ success: true, message: `Group "${groupName}" deleted successfully.` });
-
-        } catch (error) {
-            console.error('Error deleting group:', error);
-             // Handle potential invalid ObjectId format error
-            if (error.kind === 'ObjectId') {
-                 return res.status(400).json({ success: false, message: 'Invalid group ID format.' });
-            }
-            res.status(500).json({ success: false, message: 'An error occurred while deleting the group.' });
+        if (!group) {
+            return res.status(404).json({ success: false, message: 'Group not found' });
         }
+
+        // Authorization: Only the group admin can delete the group
+        if (group.adminEmail !== userEmail) {
+            return res.status(403).json({ success: false, message: 'You are not authorized to delete this group.' });
+        }
+
+        const groupName = group.name;
+
+        // Proceed with deletion from database
+        await Group.deleteOne({ _id: groupId });
+        // In a real app, you might also want to remove messages associated with this group
+        // and update user documents to remove references to this group if any existed.
+
+        // delete groupMessageHistories[groupId]; // Keep in-memory history independent for now
+        // delete groupActiveUsers[groupId]; // Keep in-memory active users independent for now
+
+        console.log(`Group "${groupName}" (ID: ${groupId}) deleted by admin ${userEmail}.`);
+
+        // Optional: Notify connected clients that this group has been deleted
+        // This allows clients to react, e.g., redirect if they were in that group's chat
+        io.to(groupId).emit('group_deleted', { groupId: groupId, groupName: groupName, message: `Group "${groupName}" has been deleted by the admin.` });
+
+        return res.status(200).json({ success: true, message: `Group "${groupName}" deleted successfully.` });
+
     } catch (error) {
         console.error("Error during deleting group:", error);
         res.status(500).json({ success: false, message: 'An error occurred while deleting the group.' });
