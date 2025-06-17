@@ -469,43 +469,37 @@ app.post('/api/user/change-username', async (req, res) => {
 
 // Handle login attempts
 app.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  console.log(`Login attempt for email: ${email}`); // Log the email
+  try {
+    const { email, password } = req.body;
+    console.log(`Login attempt for email: ${email}`);
 
-  if (email && password) {
-    const user = await User.findOne({ email: email });
-    console.log('Found user in database:', user ? {email: user.email, username: user.username} : null); // Log if user is found
-
-    if (user) {
-      try {
-        const passwordsMatch = await bcrypt.compare(password, user.hashedPassword);
-        console.log(`Password comparison result for ${email}: ${passwordsMatch}`); // Log password comparison result
-
-        if (passwordsMatch) {
-          req.session.user = { email: user.email, username: user.username };
-          console.log(`User ${user.email} (Username: ${user.username}) logged in. Session data:`, req.session.user); // Updated log for clarity
-          // Send a JSON response instead of redirect for easier debugging from client-side
-          // res.redirect('/groups'); 
-          res.status(200).json({ success: true, message: 'Login successful', redirectTo: '/groups' });
-        } else {
-          console.log(`Invalid credentials (password mismatch) for ${email}`); // Added log
-          // res.redirect('/?error=invalid_credentials');
-          res.status(401).json({ success: false, message: 'Invalid credentials' });
-        }
-      } catch (compareError) {
-        console.error(`Error during password comparison for ${email}:`, compareError); // Added log
-        // res.redirect('/?error=login_error');
-        res.status(500).json({ success: false, message: 'Login error' });
-      }
-    } else {
-      console.log(`Invalid credentials (user not found) for ${email}`); // Added log
-      // res.redirect('/?error=invalid_credentials');
-      res.status(401).json({ success: false, message: 'Invalid credentials' });
+    if (!email || !password) {
+      console.log('Missing email or password in login attempt');
+      return res.status(400).json({ success: false, message: 'Missing email or password' });
     }
-  } else {
-    console.log('Missing email or password in login attempt'); // Added log
-    // res.redirect('/?error=missing_email_or_password');
-    res.status(400).json({ success: false, message: 'Missing email or password' });
+
+    const user = await User.findOne({ email: email });
+    console.log('Found user in database:', user ? {email: user.email, username: user.username} : null);
+
+    if (!user) {
+      console.log(`Invalid credentials (user not found) for ${email}`);
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    const passwordsMatch = await bcrypt.compare(password, user.hashedPassword);
+    console.log(`Password comparison result for ${email}: ${passwordsMatch}`);
+
+    if (passwordsMatch) {
+      req.session.user = { email: user.email, username: user.username };
+      console.log(`User ${user.email} (Username: ${user.username}) logged in. Session data:`, req.session.user);
+      return res.status(200).json({ success: true, message: 'Login successful', redirectTo: '/groups' });
+    } else {
+      console.log(`Invalid credentials (password mismatch) for ${email}`);
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+  } catch (error) {
+    console.error('A critical error occurred during the login process:', error);
+    return res.status(500).json({ success: false, message: 'A server error occurred during login. Please try again.' });
   }
 });
 
