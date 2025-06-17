@@ -174,8 +174,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve login.html as the main page, or redirect to groups if logged in
+// Redirect root to /login
 app.get('/', (req, res) => {
+  res.redirect('/login');
+});
+
+// Serve login.html at the /login route, or redirect to groups if already logged in
+app.get('/login', (req, res) => {
   if (req.session.user && req.session.user.email) {
     res.redirect('/groups');
   } else {
@@ -183,12 +188,12 @@ app.get('/', (req, res) => {
   }
 });
 
-// Serve index.html (chat page) on the /chat route
+// Serve chat.html (previously index.html) on the /chat route
 app.get('/chat', async (req, res) => {
   const { groupId, groupName } = req.query;
 
   if (!req.session.user || !req.session.user.email) {
-    return res.redirect('/'); // Not logged in, redirect to login
+    return res.redirect('/login'); // Redirect to login if not authenticated
   }
 
   if (!groupId) {
@@ -206,7 +211,7 @@ app.get('/chat', async (req, res) => {
   }
 
   req.session.currentGroup = { id: groupId, name: groupName || group.name };
-  res.sendFile(path.join(__dirname, '../public', 'index.html'));
+  res.sendFile(path.join(__dirname, '../public', 'chat.html'));
 });
 
 // --- NEW: Route for Groups Page ---
@@ -214,7 +219,7 @@ app.get('/groups', (req, res) => {
     if (req.session.user && req.session.user.email) {
         res.sendFile(path.join(__dirname, '../public', 'groups.html'));
     } else {
-        res.redirect('/'); // If not logged in, redirect to login
+        res.redirect('/login'); // If not logged in, redirect to login
     }
 });
 // --- End NEW ---
@@ -225,7 +230,7 @@ app.get('/change-password', (req, res) => {
     if (req.session.user && req.session.user.email) {
         res.sendFile(path.join(__dirname, '../public', 'change-password.html'));
     } else {
-        res.redirect('/'); // If not logged in, redirect to login
+        res.redirect('/login'); // If not logged in, redirect to login
     }
 });
 
@@ -235,7 +240,7 @@ app.get('/delete-account', (req, res) => {
     if (req.session.user && req.session.user.email) {
         res.sendFile(path.join(__dirname, '../public', 'delete-account.html'));
     } else {
-        res.redirect('/'); // If not logged in, redirect to login
+        res.redirect('/login'); // If not logged in, redirect to login
     }
 });
 
@@ -512,16 +517,16 @@ app.post('/logout', (req, res) => {
       if (err) {
         console.error('Session destruction error:', err);
         // Fallback to still try and redirect client
-        res.status(500).json({ success: false, message: 'Logout failed, please clear your cookies.', redirectTo: '/' });
+        res.status(500).json({ success: false, message: 'Logout failed, please clear your cookies.', redirectTo: '/login' });
         return;
       }
       console.log(`User ${userEmail} logged out.`);
       res.clearCookie('connect.sid');
-      res.status(200).json({ success: true, message: 'Logged out successfully', redirectTo: '/' });
+      res.status(200).json({ success: true, message: 'Logged out successfully', redirectTo: '/login' });
     });
   } else {
     // If no session, just send a success response with redirect info
-    res.status(200).json({ success: true, message: 'No active session, already logged out', redirectTo: '/' });
+    res.status(200).json({ success: true, message: 'No active session, already logged out', redirectTo: '/login' });
   }
 });
 
@@ -578,7 +583,7 @@ app.post('/register', async (req, res) => {
     console.log('Current users (in database):', await User.find());
     
     // res.redirect('/?success=registered');
-    res.status(201).json({ success: true, message: 'Registration successful! Please log in.', redirectTo: '/'});
+    res.status(201).json({ success: true, message: 'Registration successful! Please log in.', redirectTo: '/login'});
 
   } catch (error) {
     console.error("Error during registration hashing/storing:", error);

@@ -44,15 +44,7 @@
             </div>
 
             <div id="pm-chat-windows-container">
-                <!-- PM windows will look like:
-                <div class="chat-window private-chat" data-room="room_name_here" style="display: none;">
-                    <div class="chat-title-bar">Private Chat with user@example.com</div>
-                    <ul class="pm-messages"></ul>
-                    <form class="pm-form">
-                        <input type="text" autocomplete="off" /><button>Send</button>
-        </form>
-                </div>
-                -->
+                <!-- PM windows will be generated here -->
             </div>
         </div>
     </div>
@@ -60,8 +52,9 @@
     <script src="/socket.io/socket.io.js"></script>
     <script src="client.js"></script>
     <script src="/help.js"></script>
+    <script src="/options.js"></script>
 
-    <!-- Options Modal -->
+    <!-- Options Modal Structure -->
     <div class="options-modal">
         <div class="options-content">
             <button class="options-close">&times;</button>
