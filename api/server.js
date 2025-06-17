@@ -171,9 +171,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve login.html as the main page
+// Serve login.html as the main page, or redirect to groups if logged in
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public', 'login.html'));
+  if (req.session.user && req.session.user.email) {
+    res.redirect('/groups');
+  } else {
+    res.sendFile(path.join(__dirname, '../public', 'login.html'));
+  }
 });
 
 // Serve index.html (chat page) on the /chat route
