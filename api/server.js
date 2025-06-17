@@ -1,5 +1,8 @@
 require('dotenv').config(); // Load environment variables from .env file
 
+// Trigger a new deployment
+console.log('Server is starting up...');
+
 // Temporarily log the URI (be careful not to expose the full password if sharing logs)
 console.log('MONGODB_URI loaded:', process.env.MONGODB_URI ? process.env.MONGODB_URI.replace(/:(.*?)(@)/, ':***$2') : 'URI is NOT set');
 
