@@ -25,7 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const EMOJI_LIST = [
         '😀', '😂', '😍', '🤔', '👍', '❤️', '🎉', '🔥', '😊', '😢', '😮', '👋',
         '💯', '🙏', '🌟', '💡', '🎈', '🍕', '🚀', '🚲', '💻', '📱', '💰', '👀',
-        '⚙️', '🔒', '🔐', '🔓', '🔑',
+        '⚙️', '🔒', '🔐', '🔓', '🔑', '🎤', '🎧', '🎵', '🎶', '🎹', '🎸', '🎺',
+        
     ];
 
     const notificationSound = new Audio('/notification.mp3');
