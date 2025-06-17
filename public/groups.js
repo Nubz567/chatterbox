@@ -344,8 +344,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial fetch of user data and then groups
     async function initializePage() {
         await fetchAndStoreCurrentUser(); // Fetch user data first
-        fetchUserGroups(); // Then fetch groups, which might use currentUserEmail
+        await fetchUserGroups();          // Then fetch their groups
     }
 
     initializePage();
+
+    const logoutForm = document.querySelector('form[action="/logout"]');
+    if (logoutForm) {
+        logoutForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+                const result = await response.json();
+                if (result.redirectTo) {
+                    window.location.href = result.redirectTo;
+                }
+            } catch (error) {
+                console.error('Logout failed:', error);
+                window.location.href = '/'; // Fallback redirect
+            }
+        });
+    }
 }); 

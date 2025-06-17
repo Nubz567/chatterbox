@@ -25,8 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const EMOJI_LIST = [
         '😀', '😂', '😍', '🤔', '👍', '❤️', '🎉', '🔥', '😊', '😢', '😮', '👋',
         '💯', '🙏', '🌟', '💡', '🎈', '🍕', '🚀', '🚲', '💻', '📱', '💰', '👀',
-        '⚙️', '🔒', '🔐', '🔓', '🔑', '🎤', '🎧', '🎵', '🎶', '🎹', '🎸', '🎺',
-        
+        '⚙️', '🔒', '🔐', '🔓', '🔑', '🎤', '🎧', '🎵', '🎶', '🎹', '🎸', '🎺'
+
     ];
 
     const notificationSound = new Audio('/notification.mp3');
@@ -500,6 +500,26 @@ document.addEventListener('DOMContentLoaded', () => {
         setActiveChatWindow(groupChatArea);
     } else {
         console.error("Group chat area (#group-chat-area) not found!");
+    }
+
+    const logoutForm = document.getElementById('logout-form');
+    if (logoutForm) {
+        logoutForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+                const result = await response.json();
+                if (result.redirectTo) {
+                    window.location.href = result.redirectTo;
+                }
+            } catch (error) {
+                console.error('Logout failed:', error);
+                window.location.href = '/'; // Fallback redirect
+            }
+        });
     }
 
     console.log("Chatterbox client.js loaded for group chat functionality.");
