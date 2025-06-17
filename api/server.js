@@ -190,28 +190,34 @@ app.get('/login', (req, res) => {
 
 // Serve chat.html (previously index.html) on the /chat route
 app.get('/chat', async (req, res) => {
-  const { groupId, groupName } = req.query;
+  try {
+    await connectToDatabase();
+    const { groupId, groupName } = req.query;
 
-  if (!req.session.user || !req.session.user.email) {
-    return res.redirect('/login'); // Redirect to login if not authenticated
+    if (!req.session.user || !req.session.user.email) {
+      return res.redirect('/login'); // Redirect to login if not authenticated
+    }
+
+    if (!groupId) {
+      return res.redirect('/groups?error=No+group+selected');
+    }
+
+    const group = await Group.findOne({ id: groupId });
+
+    if (!group) {
+      return res.redirect('/groups?error=Group+not+found');
+    }
+
+    if (!group.members.includes(req.session.user.email)) {
+      return res.redirect('/groups?error=Not+a+member+of+this+group');
+    }
+
+    req.session.currentGroup = { id: groupId, name: groupName || group.name };
+    res.sendFile(path.join(__dirname, '../public', 'chat.html'));
+  } catch (error) {
+    console.error('Error loading chat page:', error);
+    res.status(500).send('Error loading chat page. <a href="/groups">Go back to groups</a>');
   }
-
-  if (!groupId) {
-    return res.redirect('/groups?error=No+group+selected');
-  }
-
-  const group = await Group.findOne({ id: groupId });
-
-  if (!group) {
-    return res.redirect('/groups?error=Group+not+found');
-  }
-
-  if (!group.members.includes(req.session.user.email)) {
-    return res.redirect('/groups?error=Not+a+member+of+this+group');
-  }
-
-  req.session.currentGroup = { id: groupId, name: groupName || group.name };
-  res.sendFile(path.join(__dirname, '../public', 'chat.html'));
 });
 
 // --- NEW: Route for Groups Page ---
