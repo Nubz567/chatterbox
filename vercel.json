@@ -5,7 +5,6 @@
     { "src": "/api/server.js", "use": "@vercel/node" }
   ],
   "rewrites": [
-    // This rewrite sends all traffic to the serverless function
     { "source": "/(.*)", "destination": "/api/server.js" }
   ],
   "env": {}
