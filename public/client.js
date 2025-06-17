@@ -1,8 +1,11 @@
-const socket = io({
-    transports: ['websocket'] // Force WebSocket connection, more reliable on Vercel
-});
+let socket; // Define socket in a broader scope
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Now, initialize the socket connection
+    socket = io({
+        transports: ['websocket'] // Force WebSocket connection, more reliable on Vercel
+    });
+
     const messagesList = document.getElementById('messages');
     const messageForm = document.getElementById('message-form');
     const messageInput = document.getElementById('message-input');
