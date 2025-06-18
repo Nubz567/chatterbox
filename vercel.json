@@ -5,6 +5,7 @@
     { "src": "/api/server.js", "use": "@vercel/node" }
   ],
   "rewrites": [
+    { "source": "/socket.io/(.*)", "destination": "/api/server.js" },
     { "source": "/(.*)", "destination": "/api/server.js" }
   ],
   "env": {}
