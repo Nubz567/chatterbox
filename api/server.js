@@ -127,7 +127,7 @@ app.set('trust proxy', 1);
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: "https://chatterbox-blond.vercel.app", // Explicitly allow your frontend URL
+    origin: ["https://chatterbox-blond.vercel.app", "http://localhost:3000", "http://127.0.0.1:3000"], // Explicitly allow your frontend URL
     methods: ["GET", "POST"],
     credentials: true
   },
@@ -1105,6 +1105,15 @@ async function startServer() {
         // The server is implicitly started by the Vercel environment,
         // so we don't need a server.listen() call.
         // We just need to ensure this function completes successfully.
+        
+        // For local development, we need to explicitly listen.
+        // We can check if we're in a serverless environment or not.
+        if (process.env.NODE_ENV !== 'production') {
+            server.listen(PORT, () => {
+                console.log(`Server listening on port ${PORT}`);
+            });
+        }
+
     } catch (error) {
         console.error("Failed to connect to the database. Server not started.", error);
         process.exit(1); // Exit if we can't connect to the DB
