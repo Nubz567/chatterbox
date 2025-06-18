@@ -255,18 +255,11 @@ document.addEventListener('DOMContentLoaded', () => {
         displayPublicMessage(data);
     });
 
-    socket.on('update userlist', (groupMembers) => {
-        console.log('--- USER LIST DATA RECEIVED FROM SERVER ---');
-        console.log(groupMembers);
-        const localUserEmail = sessionStorage.getItem('chatterbox_useremail');
-        const localUsername = sessionStorage.getItem('chatterbox_username'); // Get current user's username
-
-        if (!userList) {
-            console.error('[CLIENT] userList element not found!');
-            return;
-        }
-        userList.innerHTML = '';
-
+    socket.on('update userlist', (users) => {
+        if (!userList) return;
+    
+        userList.innerHTML = ''; // Clear the list
+    
         // Add "Group Chat" option
         const groupChatListItem = document.createElement('li');
         groupChatListItem.textContent = 'Group Chat';
@@ -275,14 +268,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (groupChatArea) setActiveChatWindow(groupChatArea);
         });
         userList.appendChild(groupChatListItem);
-
+    
         // Add "Back to Groups Portal" link
         const backToGroupsLink = document.createElement('li');
         backToGroupsLink.innerHTML = '<a href="/groups" style="font-weight: bold; color: #007bff; display: block; padding: 5px 0; text-decoration: none;">⬅️ Back to All Groups</a>';
         backToGroupsLink.style.borderBottom = '1px solid #eee';
         backToGroupsLink.style.marginBottom = '10px';
         userList.appendChild(backToGroupsLink);
-
+    
         // Add "Members in this group:" title
         const membersTitle = document.createElement('li');
         membersTitle.textContent = `Members in ${currentGroupName || 'this group'}:`;
@@ -291,75 +284,23 @@ document.addEventListener('DOMContentLoaded', () => {
         membersTitle.style.marginTop = '5px';
         membersTitle.style.padding = '5px 0';
         userList.appendChild(membersTitle);
-
-        if (groupMembers && groupMembers.length > 0) {
-            // First, display the current user if they are in the list or known locally
-            if (localUsername) {
-                const selfItem = document.createElement('li');
-                selfItem.textContent = `${localUsername} (You)`;
-                selfItem.classList.add('cannot-pm'); // Can't PM self
-                userList.appendChild(selfItem);
-            }
-
-            // Then, display other users
-            groupMembers.forEach((member) => {
-                let memberEmail = '';
-                let memberUsername = '';
-
-                if (typeof member === 'object' && member !== null && member.email && member.username) {
-                    memberEmail = member.email;
-                    memberUsername = member.username;
-                } else if (typeof member === 'string') {
-                    memberUsername = member; 
-                    console.warn('[CLIENT] Received string username in userlist, PMs may not work for:', member);
-                } else {
-                    console.warn('[CLIENT] Invalid user data in groupMembers array:', member);
-                    return; // Skip this invalid entry
-                }
-
-                // Skip if this member is the current user (already displayed)
-                if (memberEmail === localUserEmail || memberUsername === localUsername) {
-                    return; 
-                }
-
-                const item = document.createElement('li');
-                item.textContent = memberUsername;
-                
-                if (memberEmail) { 
-                    item.classList.add('can-pm');
-                    item.dataset.email = memberEmail;
-                    item.dataset.username = memberUsername; 
-
-                    item.addEventListener('click', (event) => {
-                        const clickedItem = event.currentTarget;
-                        const targetUserEmail = clickedItem.dataset.email;
-                        console.log(`Clicked to PM. Target Username: ${memberUsername}, Target Email: ${targetUserEmail}`);
-                        if (targetUserEmail) {
-                            socket.emit('start_private_chat', { targetUserEmail: targetUserEmail });
-                        } else {
-                            console.error('Could not start PM: targetUserEmail is missing for user:', memberUsername);
-                        }
-                    });
-                } else {
-                    item.classList.add('cannot-pm'); 
-                }
-                userList.appendChild(item);
-            });
-        } else {
-            // Only show current user if no other members
-            if (localUsername) {
-                const selfItem = document.createElement('li');
-                selfItem.textContent = `${localUsername} (You)`;
-                selfItem.classList.add('cannot-pm');
-                userList.appendChild(selfItem);
+    
+        users.forEach(user => {
+            const item = document.createElement('li');
+            item.textContent = user.username;
+    
+            if (user.email === currentUserEmail) {
+                item.textContent += ' (You)';
+                item.classList.add('cannot-pm');
             } else {
-                const noMembersLi = document.createElement('li');
-                noMembersLi.textContent = 'No members currently in this group.'; // Changed message
-                noMembersLi.style.fontStyle = 'italic';
-                noMembersLi.style.padding = '5px 0';
-                userList.appendChild(noMembersLi);
+                item.classList.add('can-pm');
+                item.dataset.email = user.email;
+                item.addEventListener('click', () => {
+                    socket.emit('start_private_chat', { targetUserEmail: user.email });
+                });
             }
-        }
+            userList.appendChild(item);
+        });
     });
 
     socket.on('connect', () => {
