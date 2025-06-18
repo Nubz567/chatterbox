@@ -930,7 +930,7 @@ io.engine.use(sessionMiddleware);
 io.on('connection', async (socket) => {
   try {
     await connectToDatabase();
-    const session = socket.request.session;
+  const session = socket.request.session;
 
     session.reload((err) => {
         if (err) {
@@ -941,152 +941,152 @@ io.on('connection', async (socket) => {
 
         let userEmail = 'Anonymous';
         let username = 'Anonymous';
-        let currentGroupId = null;
+  let currentGroupId = null;
 
-        if (session && session.user && session.user.email && session.user.username && session.currentGroup && session.currentGroup.id) {
-            userEmail = session.user.email;
+  if (session && session.user && session.user.email && session.user.username && session.currentGroup && session.currentGroup.id) {
+    userEmail = session.user.email;
             username = session.user.username;
-            currentGroupId = session.currentGroup.id;
-            const currentGroupName = session.currentGroup.name;
+    currentGroupId = session.currentGroup.id;
+    const currentGroupName = session.currentGroup.name;
 
-            socket.join(currentGroupId);
-            console.log(`User ${username} (Email: ${userEmail}) connected to group room: ${currentGroupId} (${currentGroupName})`);
+    socket.join(currentGroupId);
+    console.log(`User ${username} (Email: ${userEmail}) connected to group room: ${currentGroupId} (${currentGroupName})`);
 
-            socket.emit('user_identity', { email: userEmail, username: username, groupName: currentGroupName, groupId: currentGroupId });
+    socket.emit('user_identity', { email: userEmail, username: username, groupName: currentGroupName, groupId: currentGroupId });
 
-            if (!groupActiveUsers[currentGroupId]) {
+    if (!groupActiveUsers[currentGroupId]) {
                 groupActiveUsers[currentGroupId] = new Map();
-            }
-            if (!groupActiveUsers[currentGroupId].has(userEmail)) {
-                groupActiveUsers[currentGroupId].set(userEmail, username);
+    }
+    if (!groupActiveUsers[currentGroupId].has(userEmail)) {
+      groupActiveUsers[currentGroupId].set(userEmail, username);
                 const userListArray = Array.from(groupActiveUsers[currentGroupId], ([email, uname]) => ({ email: email, username: uname }));
-                io.to(currentGroupId).emit('update userlist', userListArray);
-                console.log(`Active users in ${currentGroupId}:`, userListArray);
-            }
+      io.to(currentGroupId).emit('update userlist', userListArray);
+      console.log(`Active users in ${currentGroupId}:`, userListArray);
+    }
 
-            if (!groupMessageHistories[currentGroupId]) {
-                groupMessageHistories[currentGroupId] = [];
-            }
-            socket.emit('load history', groupMessageHistories[currentGroupId]);
-            console.log(`Sent message history for group ${currentGroupId} to ${userEmail}`);
-        } else {
-            console.log('Anonymous or no group context user connected to socket. Disconnecting.');
-            socket.emit('auth_error', 'No valid group session. Please select a group.');
+    if (!groupMessageHistories[currentGroupId]) {
+        groupMessageHistories[currentGroupId] = [];
+    }
+    socket.emit('load history', groupMessageHistories[currentGroupId]);
+    console.log(`Sent message history for group ${currentGroupId} to ${userEmail}`);
+  } else {
+    console.log('Anonymous or no group context user connected to socket. Disconnecting.');
+    socket.emit('auth_error', 'No valid group session. Please select a group.');
             return socket.disconnect(true);
+  }
+
+  socket.on('start_private_chat', async (data) => {
+    const initiatorEmail = userEmail;
+    const initiatorUsername = username; 
+    const targetEmail = data.targetUserEmail;
+
+    if (initiatorEmail === 'Anonymous' || targetEmail === 'Anonymous') {
+      socket.emit('private_chat_failed', { error: 'Login required for PM.' });
+      return;
+    }
+
+    const targetUser = await User.findOne({ email: targetEmail });
+    const targetUsernameForDisplay = targetUser ? targetUser.username : targetEmail;
+
+    let targetSocketId = null;
+    const socketsInGroup = io.sockets.adapter.rooms.get(currentGroupId);
+    if (socketsInGroup) {
+        for (const socketIdInRoom of socketsInGroup) {
+            const s = io.sockets.sockets.get(socketIdInRoom);
+            if (s && s.request.session && s.request.session.user && s.request.session.user.email === targetEmail) {
+                targetSocketId = socketIdInRoom;
+                break;
+            }
         }
+    }
 
-        socket.on('start_private_chat', async (data) => {
-            const initiatorEmail = userEmail;
-            const initiatorUsername = username;
-            const targetEmail = data.targetUserEmail;
+    if (!targetSocketId) {
+      socket.emit('private_chat_failed', { error: `${targetEmail} is not online in this group.` });
+      return;
+    }
 
-            if (initiatorEmail === 'Anonymous' || targetEmail === 'Anonymous') {
-                socket.emit('private_chat_failed', { error: 'Login required for PM.' });
-                return;
-            }
+    const roomName = [initiatorEmail, targetEmail].sort().join('_pm_in_group_') + `_${currentGroupId}`;
+    socket.join(roomName);
+    const targetSocketInstance = io.sockets.sockets.get(targetSocketId);
+    if (targetSocketInstance) {
+      targetSocketInstance.join(roomName);
+      console.log(`${initiatorUsername} and ${targetUsernameForDisplay} joined PM room: ${roomName} within group ${currentGroupId}`);
+      
+      socket.emit('private_chat_initiated', { 
+        email: targetEmail, 
+        username: targetUsernameForDisplay, 
+        roomName: roomName 
+      });
+      targetSocketInstance.emit('private_chat_initiated', { 
+        email: initiatorEmail, 
+        username: initiatorUsername, 
+        roomName: roomName 
+      });
+    } else {
+      socket.emit('private_chat_failed', { error: `Could not establish PM with ${targetEmail}.` });
+    }
+  });
 
-            const targetUser = await User.findOne({ email: targetEmail });
-            const targetUsernameForDisplay = targetUser ? targetUser.username : targetEmail;
+  socket.on('typing_start', () => {
+    if (username !== 'Anonymous' && currentGroupId) {
+      socket.to(currentGroupId).emit('user_typing', { user: username });
+    }
+  });
 
-            let targetSocketId = null;
-            const socketsInGroup = io.sockets.adapter.rooms.get(currentGroupId);
-            if (socketsInGroup) {
-                for (const socketIdInRoom of socketsInGroup) {
-                    const s = io.sockets.sockets.get(socketIdInRoom);
-                    if (s && s.request.session && s.request.session.user && s.request.session.user.email === targetEmail) {
-                        targetSocketId = socketIdInRoom;
-                        break;
-                    }
-                }
-            }
+  socket.on('typing_stop', () => {
+    if (username !== 'Anonymous' && currentGroupId) {
+      socket.to(currentGroupId).emit('user_stopped_typing', { user: username });
+    }
+  });
 
-            if (!targetSocketId) {
-                socket.emit('private_chat_failed', { error: `${targetEmail} is not online in this group.` });
-                return;
-            }
+  socket.on('chat message', (msg) => {
+    if (username !== 'Anonymous' && currentGroupId) {
+      const messageData = {
+        user: username, 
+        email: userEmail, 
+        text: msg,
+        timestamp: new Date(),
+        groupId: currentGroupId
+      };
+      
+      if (!groupMessageHistories[currentGroupId]) groupMessageHistories[currentGroupId] = [];
+      groupMessageHistories[currentGroupId].push(messageData);
+      if (groupMessageHistories[currentGroupId].length > MAX_HISTORY_LENGTH) {
+        groupMessageHistories[currentGroupId].shift();
+      }
 
-            const roomName = [initiatorEmail, targetEmail].sort().join('_pm_in_group_') + `_${currentGroupId}`;
-            socket.join(roomName);
-            const targetSocketInstance = io.sockets.sockets.get(targetSocketId);
-            if (targetSocketInstance) {
-                targetSocketInstance.join(roomName);
-                console.log(`${initiatorUsername} and ${targetUsernameForDisplay} joined PM room: ${roomName} within group ${currentGroupId}`);
-                
-                socket.emit('private_chat_initiated', { 
-                    email: targetEmail, 
-                    username: targetUsernameForDisplay, 
-                    roomName: roomName 
-                });
-                targetSocketInstance.emit('private_chat_initiated', { 
-                    email: initiatorEmail, 
-                    username: initiatorUsername, 
-                    roomName: roomName 
-                });
-            } else {
-                socket.emit('private_chat_failed', { error: `Could not establish PM with ${targetEmail}.` });
-            }
-        });
+      io.to(currentGroupId).emit('chat message', messageData);
+      socket.to(currentGroupId).emit('user_stopped_typing', { user: username }); 
+    } else {
+      socket.emit('auth_error', 'Cannot send message without valid group session.');
+    }
+  });
 
-        socket.on('typing_start', () => {
-            if (username !== 'Anonymous' && currentGroupId) {
-                socket.to(currentGroupId).emit('user_typing', { user: username });
-            }
-        });
+  socket.on('send_private_message', (data) => {
+    if (username === 'Anonymous' || !currentGroupId) { 
+      socket.emit('auth_error', 'Cannot send PM without valid group session.');
+      return;
+    }
+    if (!data.roomName || !data.text) return;
 
-        socket.on('typing_stop', () => {
-            if (username !== 'Anonymous' && currentGroupId) {
-                socket.to(currentGroupId).emit('user_stopped_typing', { user: username });
-            }
-        });
+    const messageData = {
+      user: username, 
+      email: userEmail, 
+      text: data.text,
+      timestamp: Date.now(),
+      roomName: data.roomName,
+      groupId: currentGroupId
+    };
+    io.to(data.roomName).emit('receive_private_message', messageData);
+  });
 
-        socket.on('chat message', (msg) => {
-            if (username !== 'Anonymous' && currentGroupId) {
-                const messageData = {
-                    user: username,
-                    email: userEmail,
-                    text: msg,
-                    timestamp: new Date(),
-                    groupId: currentGroupId
-                };
-                
-                if (!groupMessageHistories[currentGroupId]) groupMessageHistories[currentGroupId] = [];
-                groupMessageHistories[currentGroupId].push(messageData);
-                if (groupMessageHistories[currentGroupId].length > MAX_HISTORY_LENGTH) {
-                    groupMessageHistories[currentGroupId].shift();
-                }
-
-                io.to(currentGroupId).emit('chat message', messageData);
-                socket.to(currentGroupId).emit('user_stopped_typing', { user: username });
-            } else {
-                socket.emit('auth_error', 'Cannot send message without valid group session.');
-            }
-        });
-
-        socket.on('send_private_message', (data) => {
-            if (username === 'Anonymous' || !currentGroupId) {
-                socket.emit('auth_error', 'Cannot send PM without valid group session.');
-                return;
-            }
-            if (!data.roomName || !data.text) return;
-
-            const messageData = {
-                user: username,
-                email: userEmail,
-                text: data.text,
-                timestamp: Date.now(),
-                roomName: data.roomName,
-                groupId: currentGroupId
-            };
-            io.to(data.roomName).emit('receive_private_message', messageData);
-        });
-
-        socket.on('disconnect', () => {
-            if (userEmail !== 'Anonymous' && currentGroupId && groupActiveUsers[currentGroupId] && groupActiveUsers[currentGroupId].has(userEmail)) {
-                groupActiveUsers[currentGroupId].delete(userEmail);
+  socket.on('disconnect', () => {
+    if (userEmail !== 'Anonymous' && currentGroupId && groupActiveUsers[currentGroupId] && groupActiveUsers[currentGroupId].has(userEmail)) {
+      groupActiveUsers[currentGroupId].delete(userEmail);
                 const userListArray = Array.from(groupActiveUsers[currentGroupId], ([email, uname]) => ({ email: email, username: uname }));
-                io.to(currentGroupId).emit('update userlist', userListArray);
-                console.log(`${username} (Email: ${userEmail}) disconnected from group ${currentGroupId}. Active users:`, userListArray);
-                socket.to(currentGroupId).emit('user_stopped_typing', { user: username });
+      io.to(currentGroupId).emit('update userlist', userListArray);
+      console.log(`${username} (Email: ${userEmail}) disconnected from group ${currentGroupId}. Active users:`, userListArray);
+      socket.to(currentGroupId).emit('user_stopped_typing', { user: username });
             }
         });
     });
