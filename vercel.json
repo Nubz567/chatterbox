@@ -1,19 +1,12 @@
 {
   "version": 2,
   "builds": [
-    { "src": "api/server.js", "use": "@vercel/node" }
+    { "src": "/public", "use": "@vercel/static" },
+    { "src": "/api/server.js", "use": "@vercel/node" }
   ],
-  "routes": [
-    { "src": "/socket.io/(.*)", "dest": "api/server.js" },
-    { "src": "/api/(.*)", "dest": "api/server.js" },
-    { "src": "/login", "dest": "api/server.js" },
-    { "src": "/register", "dest": "api/server.js" },
-    { "src": "/chat", "dest": "api/server.js" },
-    { "src": "/groups", "dest": "api/server.js" },
-    { "src": "/change-password", "dest": "api/server.js" },
-    { "src": "/delete-account", "dest": "api/server.js" },
-    { "src": "/logout", "dest": "api/server.js" },
-    { "src": "/(.*)", "dest": "/public/$1" }
+  "rewrites": [
+    { "source": "/socket.io/(.*)", "destination": "/api/server.js" },
+    { "source": "/(.*)", "destination": "/api/server.js" }
   ],
   "env": {}
 } 
