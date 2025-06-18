@@ -1097,10 +1097,20 @@ io.on('connection', async (socket) => {
   }
 });
 
-/*
-server.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-});
-*/
+// Start the server only after the database is connected
+async function startServer() {
+    try {
+        await connectToDatabase();
+        console.log("Database connected, starting server...");
+        // The server is implicitly started by the Vercel environment,
+        // so we don't need a server.listen() call.
+        // We just need to ensure this function completes successfully.
+    } catch (error) {
+        console.error("Failed to connect to the database. Server not started.", error);
+        process.exit(1); // Exit if we can't connect to the DB
+    }
+}
+
+startServer();
 
 module.exports = server;
