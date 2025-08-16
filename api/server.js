@@ -129,9 +129,19 @@ const io = socketIo(server, {
   cors: {
     origin: ["https://chatterbox-blond.vercel.app", "http://localhost:3000", "http://127.0.0.1:3000"], // Explicitly allow your frontend URL
     methods: ["GET", "POST"],
-    credentials: true
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"]
   },
-  transports: ['websocket'] // Force WebSocket transport only
+  transports: ['polling'], // Use only polling for serverless compatibility
+  allowEIO3: true, // Allow Engine.IO v3 clients
+  pingTimeout: 60000, // Increase ping timeout for serverless
+  pingInterval: 25000, // Increase ping interval for serverless
+  upgradeTimeout: 30000, // Increase upgrade timeout
+  maxHttpBufferSize: 1e6, // 1MB buffer size
+  allowRequest: (req, callback) => {
+    // Allow all requests in serverless environment
+    callback(null, true);
+  }
 });
 
 const PORT = process.env.PORT || 3000;
@@ -177,6 +187,16 @@ app.use((req, res, next) => {
 // Redirect root to /login
 app.get('/', (req, res) => {
   res.redirect('/login');
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    serverless: !!process.env.VERCEL
+  });
 });
 
 // Serve login.html at the /login route, or redirect to groups if already logged in
@@ -1122,13 +1142,16 @@ async function startServer() {
     try {
         await connectToDatabase();
         console.log("Database connected, starting server...");
-        // The server is implicitly started by the Vercel environment,
-        // so we don't need a server.listen() call.
-        // We just need to ensure this function completes successfully.
         
-        // For local development, we need to explicitly listen.
-        // We can check if we're in a serverless environment or not.
-        if (process.env.NODE_ENV !== 'production') {
+        // Check if we're in a serverless environment
+        const isServerless = process.env.VERCEL || process.env.NODE_ENV === 'production';
+        
+        if (isServerless) {
+            console.log("Running in serverless environment (Vercel)");
+            // In serverless, we don't start a traditional server
+            // The server is handled by Vercel's infrastructure
+        } else {
+            // For local development, we need to explicitly listen.
             server.listen(PORT, () => {
                 console.log(`Server listening on port ${PORT}`);
             });
@@ -1136,7 +1159,9 @@ async function startServer() {
 
     } catch (error) {
         console.error("Failed to connect to the database. Server not started.", error);
-        process.exit(1); // Exit if we can't connect to the DB
+        if (!process.env.VERCEL) {
+            process.exit(1); // Exit if we can't connect to the DB (but not in serverless)
+        }
     }
 }
 

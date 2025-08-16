@@ -1,10 +1,19 @@
 let socket; // Define socket in a broader scope
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Now, initialize the socket connection
+    // Now, initialize the socket connection with serverless-friendly settings
     socket = io({
-        transports: ['websocket'] // Force WebSocket connection, more reliable on Vercel
+        transports: ['polling'], // Use only polling for serverless compatibility
+        timeout: 30000, // Increase timeout for serverless
+        forceNew: true, // Force new connection
+        reconnection: true, // Enable reconnection
+        reconnectionAttempts: 5, // Try to reconnect 5 times
+        reconnectionDelay: 1000, // Wait 1 second between attempts
+        reconnectionDelayMax: 5000 // Max delay between attempts
     });
+
+    // Show connecting status immediately
+    updateConnectionStatus('connecting');
 
     const messagesList = document.getElementById('messages');
     const messageForm = document.getElementById('message-form');
@@ -66,6 +75,75 @@ document.addEventListener('DOMContentLoaded', () => {
         const div = document.createElement('div');
         div.appendChild(document.createTextNode(str));
         return div.innerHTML;
+    }
+
+    function showConnectionError(message) {
+        // Remove any existing error messages
+        const existingErrors = document.querySelectorAll('.connection-error');
+        existingErrors.forEach(err => err.remove());
+        
+        // Create new error message
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'connection-error';
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #ff4444;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 10000;
+            max-width: 300px;
+            font-size: 14px;
+        `;
+        errorDiv.textContent = message;
+        
+        document.body.appendChild(errorDiv);
+        
+        // Auto-remove after 10 seconds
+        setTimeout(() => {
+            if (errorDiv.parentNode) {
+                errorDiv.remove();
+            }
+        }, 10000);
+    }
+
+    function updateConnectionStatus(status) {
+        // Find or create connection status indicator
+        let statusIndicator = document.getElementById('connection-status');
+        if (!statusIndicator) {
+            statusIndicator = document.createElement('div');
+            statusIndicator.id = 'connection-status';
+            statusIndicator.style.cssText = `
+                position: fixed;
+                top: 10px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 5px 15px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: bold;
+                z-index: 10001;
+                transition: all 0.3s ease;
+            `;
+            document.body.appendChild(statusIndicator);
+        }
+        
+        if (status === 'connected') {
+            statusIndicator.textContent = '🟢 Connected';
+            statusIndicator.style.background = '#4CAF50';
+            statusIndicator.style.color = 'white';
+        } else if (status === 'disconnected') {
+            statusIndicator.textContent = '🔴 Disconnected';
+            statusIndicator.style.background = '#f44336';
+            statusIndicator.style.color = 'white';
+        } else if (status === 'connecting') {
+            statusIndicator.textContent = '🟡 Connecting...';
+            statusIndicator.style.background = '#FF9800';
+            statusIndicator.style.color = 'white';
+        }
     }
 
     function linkify(text) {
@@ -342,10 +420,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
     socket.on('connect', () => {
         console.log('Connected to server via Socket.IO');
+        // Clear any connection error messages
+        const errorMessages = document.querySelectorAll('.connection-error');
+        errorMessages.forEach(msg => msg.remove());
+        
+        // Update connection status
+        updateConnectionStatus('connected');
+    });
+
+    socket.on('connect_error', (error) => {
+        console.error('Socket.IO connection error:', error);
+        // Show user-friendly error message
+        showConnectionError('Connection failed. Trying to reconnect...');
+    });
+
+    socket.on('reconnect', (attemptNumber) => {
+        console.log('Reconnected to server after', attemptNumber, 'attempts');
+        // Clear error messages on successful reconnection
+        const errorMessages = document.querySelectorAll('.connection-error');
+        errorMessages.forEach(msg => msg.remove());
+    });
+
+    socket.on('reconnect_error', (error) => {
+        console.error('Socket.IO reconnection error:', error);
+        showConnectionError('Reconnection failed. Please refresh the page.');
+    });
+
+    socket.on('reconnect_failed', () => {
+        console.error('Socket.IO reconnection failed after all attempts');
+        showConnectionError('Unable to connect to server. Please check your internet connection and refresh the page.');
     });
 
     socket.on('disconnect', (reason) => {
         console.log('Disconnected from server:', reason);
+        updateConnectionStatus('disconnected');
         if (typingIndicator) typingIndicator.textContent = '';
         if (reason === 'io server disconnect') {
             // This happens if server calls socket.disconnect(true) e.g. on auth error
