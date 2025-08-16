@@ -443,6 +443,7 @@ body.has-fixed-logo {
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
+    margin-bottom: 15px; /* Add some space below the user list */
 }
 
 #user-list-container h2 {
@@ -451,6 +452,8 @@ body.has-fixed-logo {
     color: #333;
     margin-bottom: 10px;
     text-align: center;
+    border-bottom: 2px solid #3498db; /* Add a blue underline to make it more prominent */
+    padding-bottom: 5px;
 }
 
 #user-list {
@@ -487,6 +490,16 @@ body.has-fixed-logo {
 #user-list li.cannot-pm {
     color: #999; /* Grey out self in user list if not clickable */
     cursor: default;
+}
+
+#user-list li.no-users-message {
+    color: #999;
+    font-style: italic;
+    text-align: center;
+    padding: 10px 0;
+    background: rgba(153, 153, 153, 0.1);
+    border-radius: 4px;
+    margin: 5px 0;
 }
 
 #user-list li.group-chat-option {

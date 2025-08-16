@@ -17,6 +17,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const emojiPanel = document.getElementById('emoji-panel');
     const groupChatTitle = document.querySelector('#group-chat-area .chat-title-bar'); // For group name
 
+    // Debug: Check if user list element is found
+    console.log('[CLIENT] Page loaded. userList element found:', !!userList);
+    if (userList) {
+        console.log('[CLIENT] userList element:', userList);
+    } else {
+        console.error('[CLIENT] userList element not found! Check HTML structure.');
+    }
+
     let typingTimeout;
     const TYPING_TIMER_LENGTH = 1500;
     let currentlyTyping = {};
@@ -270,7 +278,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('update userlist', (users) => {
-        if (!userList) return;
+        console.log('[CLIENT] update userlist event received:', users);
+        if (!userList) {
+            console.error('[CLIENT] userList element not found!');
+            return;
+        }
     
         userList.innerHTML = ''; // Clear the list
     
@@ -299,22 +311,33 @@ document.addEventListener('DOMContentLoaded', () => {
         membersTitle.style.padding = '5px 0';
         userList.appendChild(membersTitle);
     
-        users.forEach(user => {
-            const item = document.createElement('li');
-            item.textContent = user.username;
-    
-            if (user.email === currentUserEmail) {
-                item.textContent += ' (You)';
-                item.classList.add('cannot-pm');
-            } else {
-                item.classList.add('can-pm');
-                item.dataset.email = user.email;
-                item.addEventListener('click', () => {
-                    socket.emit('start_private_chat', { targetUserEmail: user.email });
-                });
-            }
-            userList.appendChild(item);
-        });
+        console.log('[CLIENT] Processing users:', users);
+        if (users && users.length > 0) {
+            users.forEach(user => {
+                console.log('[CLIENT] Processing user:', user);
+                const item = document.createElement('li');
+                item.textContent = user.username;
+        
+                if (user.email === currentUserEmail) {
+                    item.textContent += ' (You)';
+                    item.classList.add('cannot-pm');
+                } else {
+                    item.classList.add('can-pm');
+                    item.dataset.email = user.email;
+                    item.addEventListener('click', () => {
+                        console.log('[CLIENT] Initiating PM with:', user.email);
+                        socket.emit('start_private_chat', { targetUserEmail: user.email });
+                    });
+                }
+                userList.appendChild(item);
+            });
+        } else {
+            console.log('[CLIENT] No users in the list');
+            const noUsersItem = document.createElement('li');
+            noUsersItem.textContent = 'No other users online';
+            noUsersItem.className = 'no-users-message';
+            userList.appendChild(noUsersItem);
+        }
     });
 
     socket.on('connect', () => {
@@ -391,6 +414,14 @@ document.addEventListener('DOMContentLoaded', () => {
             groupChatTitle.textContent = currentGroupName;
         }
         setActiveChatWindow(groupChatArea);
+        
+        // Request user list if it hasn't been populated yet
+        setTimeout(() => {
+            if (userList && userList.children.length <= 3) { // Only Group Chat, Back link, and Members title
+                console.log('[CLIENT] User list seems empty, requesting user list...');
+                socket.emit('request_userlist');
+            }
+        }, 1000);
     });
 
     socket.on('private_chat_initiated', (data) => {

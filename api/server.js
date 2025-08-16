@@ -960,8 +960,15 @@ io.on('connection', async (socket) => {
     if (!groupActiveUsers[currentGroupId].has(userEmail)) {
       groupActiveUsers[currentGroupId].set(userEmail, username);
                 const userListArray = Array.from(groupActiveUsers[currentGroupId], ([email, uname]) => ({ email: email, username: uname }));
+      console.log(`[SERVER] Emitting update userlist for group ${currentGroupId}:`, userListArray);
       io.to(currentGroupId).emit('update userlist', userListArray);
       console.log(`Active users in ${currentGroupId}:`, userListArray);
+    } else {
+      console.log(`[SERVER] User ${userEmail} already in group ${currentGroupId}, not adding again`);
+      // Still emit the current user list to ensure the client has the latest data
+      const userListArray = Array.from(groupActiveUsers[currentGroupId], ([email, uname]) => ({ email: email, username: uname }));
+      console.log(`[SERVER] Emitting current userlist for group ${currentGroupId}:`, userListArray);
+      socket.emit('update userlist', userListArray);
     }
 
     if (!groupMessageHistories[currentGroupId]) {
@@ -1039,6 +1046,17 @@ io.on('connection', async (socket) => {
     }
   });
 
+  socket.on('request_userlist', () => {
+    if (username !== 'Anonymous' && currentGroupId && groupActiveUsers[currentGroupId]) {
+      console.log(`[SERVER] User ${username} requested user list for group ${currentGroupId}`);
+      const userListArray = Array.from(groupActiveUsers[currentGroupId], ([email, uname]) => ({ email: email, username: uname }));
+      console.log(`[SERVER] Sending user list to ${username}:`, userListArray);
+      socket.emit('update userlist', userListArray);
+    } else {
+      console.log(`[SERVER] Cannot send user list - user: ${username}, group: ${currentGroupId}, groupActiveUsers:`, groupActiveUsers[currentGroupId]);
+    }
+  });
+
   socket.on('chat message', (msg) => {
     if (username !== 'Anonymous' && currentGroupId) {
       const messageData = {
@@ -1082,8 +1100,10 @@ io.on('connection', async (socket) => {
 
   socket.on('disconnect', () => {
     if (userEmail !== 'Anonymous' && currentGroupId && groupActiveUsers[currentGroupId] && groupActiveUsers[currentGroupId].has(userEmail)) {
+      console.log(`[SERVER] User ${username} (${userEmail}) disconnecting from group ${currentGroupId}`);
       groupActiveUsers[currentGroupId].delete(userEmail);
                 const userListArray = Array.from(groupActiveUsers[currentGroupId], ([email, uname]) => ({ email: email, username: uname }));
+      console.log(`[SERVER] Emitting updated userlist after disconnect for group ${currentGroupId}:`, userListArray);
       io.to(currentGroupId).emit('update userlist', userListArray);
       console.log(`${username} (Email: ${userEmail}) disconnected from group ${currentGroupId}. Active users:`, userListArray);
       socket.to(currentGroupId).emit('user_stopped_typing', { user: username });
