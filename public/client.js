@@ -226,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
         messageContentSpan.innerHTML = `${escapeHTML(data.user)}: ${linkify(data.text)}`;
         item.appendChild(messageContentSpan);
 
-        if (currentUserEmail && data.user === currentUserEmail) {
+        if (currentUserEmail && data.email === currentUserEmail) {
             item.classList.add('my-message');
         } else {
             item.classList.add('other-message');
