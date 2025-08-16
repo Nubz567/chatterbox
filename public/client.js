@@ -198,7 +198,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (messageForm && messageInput) {
         messageForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            console.log('Message form submitted. Input value:', messageInput.value);
             if (messageInput.value) {
+                console.log('Emitting chat message:', messageInput.value);
                 socket.emit('chat message', messageInput.value);
                 socket.emit('typing_stop'); // Also clear typing for self on send
                 clearTimeout(typingTimeout);
@@ -210,7 +212,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function displayPublicMessage(data) {
-        if (!messagesList) return;
+        console.log('displayPublicMessage called with data:', data);
+        console.log('messagesList element:', messagesList);
+        
+        if (!messagesList) {
+            console.error('messagesList is null or undefined');
+            return;
+        }
+        
         const item = document.createElement('li');
         const date = new Date(data.timestamp || Date.now());
         const hours = date.getHours().toString().padStart(2, '0');
@@ -231,8 +240,11 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             item.classList.add('other-message');
         }
+        
+        console.log('About to append message item:', item);
         messagesList.appendChild(item);
         messagesList.scrollTop = messagesList.scrollHeight;
+        console.log('Message appended. Current messagesList children count:', messagesList.children.length);
 
         if (data.user !== currentUserEmail && canPlaySound && document.hidden) {
             notificationSound.play().catch(e => console.warn("Error playing sound for group chat:", e));
@@ -240,6 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     socket.on('load history', (history) => {
+        console.log('load history event received:', history);
         if (!messagesList) return;
         messagesList.innerHTML = '';
         if (history && Array.isArray(history)) {
@@ -252,6 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('chat message', (data) => {
+        console.log('chat message event received:', data);
         displayPublicMessage(data);
     });
 
