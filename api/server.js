@@ -20,7 +20,12 @@ const MongoStore = require('connect-mongo');
 // --- NEW: Serverless-Compatible MongoDB Connection ---
 const mongoURI = process.env.MONGODB_URI;
 if (!mongoURI) {
-    throw new Error('FATAL ERROR: MONGODB_URI is not defined in environment variables.');
+    console.error('FATAL ERROR: MONGODB_URI is not defined in environment variables.');
+    if (!process.env.VERCEL) {
+        throw new Error('FATAL ERROR: MONGODB_URI is not defined in environment variables.');
+    } else {
+        console.warn('MONGODB_URI not set - some features may not work in serverless environment');
+    }
 }
 
 // Using a global variable to cache the connection promise.
@@ -45,6 +50,13 @@ async function connectToDatabase() {
         }).then(mongooseInstance => {
             console.log('Mongoose connection promise resolved.');
             return mongooseInstance;
+        }).catch(error => {
+            console.error('Mongoose connection failed:', error);
+            // In serverless, don't throw - just log the error
+            if (!process.env.VERCEL) {
+                throw error;
+            }
+            return null;
         });
     }
 
@@ -55,7 +67,10 @@ async function connectToDatabase() {
     } catch (e) {
         cachedConnection.promise = null; // On error, reset the promise to allow retry
         console.error('An error occurred while connecting to MongoDB', e);
-        throw new Error('Database connection failed.');
+        if (!process.env.VERCEL) {
+            throw new Error('Database connection failed.');
+        }
+        return null;
     }
 }
 // --- END NEW CONNECTION LOGIC ---
@@ -154,7 +169,17 @@ const sessionMiddleware = session({
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-    clientPromise: connectToDatabase().then(mongooseInstance => mongooseInstance.connection.getClient()),
+    clientPromise: connectToDatabase().then(mongooseInstance => {
+      if (mongooseInstance && mongooseInstance.connection) {
+        return mongooseInstance.connection.getClient();
+      }
+      // Fallback for serverless environments where DB might not be available
+      console.warn('Database not available for session store, using memory store');
+      return null;
+    }).catch(() => {
+      console.warn('Failed to create MongoDB session store, using memory store');
+      return null;
+    }),
     collectionName: 'sessions', // Name of the collection to store sessions
     ttl: 14 * 24 * 60 * 60 // Session TTL in seconds (e.g., 14 days)
   }),
@@ -197,6 +222,11 @@ app.get('/health', (req, res) => {
     environment: process.env.NODE_ENV || 'development',
     serverless: !!process.env.VERCEL
   });
+});
+
+// Simple ping endpoint for basic connectivity testing
+app.get('/ping', (req, res) => {
+  res.json({ pong: true, timestamp: new Date().toISOString() });
 });
 
 // Serve login.html at the /login route, or redirect to groups if already logged in
@@ -1165,6 +1195,11 @@ async function startServer() {
     }
 }
 
-startServer();
+// Only start the server if we're not in a serverless environment
+if (!process.env.VERCEL) {
+    startServer();
+}
 
-module.exports = server;
+// Export for Vercel serverless function
+module.exports = app;
+module.exports.server = server;
