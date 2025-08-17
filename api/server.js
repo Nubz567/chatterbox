@@ -3,10 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
-const http = require('http');
-const socketIo = require('socket.io');
 const app = express();
-const server = http.createServer(app);
 
 // MongoDB Connection
 const mongoURI = process.env.MONGODB_URI;
@@ -53,34 +50,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(sessionMiddleware);
 
-// Socket.IO setup
-const io = socketIo(server, {
-    cors: {
-        origin: ["https://chatterbox-blond.vercel.app", "http://localhost:3000"],
-        methods: ["GET", "POST"],
-        credentials: true
-    },
-    transports: ['polling', 'websocket']
-});
-
-// Make Express session accessible to Socket.IO
-io.engine.use(sessionMiddleware);
-
-// Socket.IO connection handling
-io.on('connection', (socket) => {
-    console.log('Socket.IO client connected:', socket.id);
-    
-    socket.emit('welcome', { message: 'Connected to Chatterbox server' });
-    
-    socket.on('ping', () => {
-        socket.emit('pong', { timestamp: new Date().toISOString() });
-    });
-    
-    socket.on('disconnect', () => {
-        console.log('Socket.IO client disconnected:', socket.id);
-    });
-});
-
 // Simple routes first
 app.get('/', (req, res) => {
     res.json({ message: 'Chatterbox server is running' });
@@ -93,7 +62,7 @@ app.get('/health', (req, res) => {
         environment: process.env.NODE_ENV || 'development',
         database: mongoURI ? 'configured' : 'not configured',
         session: 'enabled',
-        socketio: 'enabled'
+        socketio: 'disabled_for_testing'
     });
 });
 
@@ -129,15 +98,6 @@ app.get('/test-session', (req, res) => {
     });
 });
 
-// Test Socket.IO functionality
-app.get('/test-socket', (req, res) => {
-    res.json({ 
-        success: true, 
-        message: 'Socket.IO server is running',
-        connectedClients: io.engine.clientsCount || 0
-    });
-});
-
 // Error handling
 app.use((err, req, res, next) => {
     console.error('Express error:', err);
@@ -153,4 +113,3 @@ app.use((req, res) => {
 
 // Export for Vercel
 module.exports = app;
-module.exports.server = server;
