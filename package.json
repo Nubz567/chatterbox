@@ -6,12 +6,15 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node api/server.js",
-    "build": "echo 'Build completed'",
+    "build": "echo 'Build completed successfully'",
     "dev": "node api/server.js"
   },
-  "keywords": [],
+  "keywords": ["chat", "real-time", "socket.io", "express"],
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "connect-mongo": "^5.1.0",
