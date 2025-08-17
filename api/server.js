@@ -4,6 +4,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
+const MongoStore = require('connect-mongo');
 const app = express();
 
 // MongoDB Connection
@@ -33,11 +34,16 @@ async function connectToDatabase() {
     }
 }
 
-// Session configuration
+// Session configuration with MongoDB store
 const sessionMiddleware = session({
     secret: process.env.SESSION_SECRET || 'default-secret',
     resave: false,
     saveUninitialized: false,
+    store: MongoStore.create({
+        clientPromise: connectToDatabase().then(conn => conn?.connection?.getClient()),
+        collectionName: 'sessions',
+        ttl: 14 * 24 * 60 * 60 // 14 days
+    }),
     cookie: { 
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
@@ -98,7 +104,8 @@ app.get('/', (req, res) => {
     res.json({ 
         message: 'Chatterbox server is running',
         socketio: process.env.VERCEL ? 'serverless_mode' : 'enabled',
-        bcrypt: 'enabled'
+        bcrypt: 'enabled',
+        sessionStore: 'mongodb'
     });
 });
 
@@ -109,6 +116,7 @@ app.get('/health', (req, res) => {
         environment: process.env.NODE_ENV || 'development',
         database: mongoURI ? 'configured' : 'not configured',
         session: 'enabled',
+        sessionStore: 'mongodb',
         socketio: process.env.VERCEL ? 'serverless_mode' : 'enabled',
         bcrypt: 'enabled'
     });
@@ -140,9 +148,10 @@ app.get('/test-session', (req, res) => {
     req.session.visitCount++;
     res.json({ 
         success: true, 
-        message: 'Session working',
+        message: 'Session working with MongoDB store',
         visitCount: req.session.visitCount,
-        sessionId: req.sessionID
+        sessionId: req.sessionID,
+        sessionStore: 'mongodb'
     });
 });
 
@@ -186,6 +195,33 @@ app.get('/test-bcrypt', async (req, res) => {
         res.status(500).json({ 
             success: false, 
             message: 'bcrypt error', 
+            error: error.message 
+        });
+    }
+});
+
+// Test connect-mongo functionality
+app.get('/test-connect-mongo', async (req, res) => {
+    try {
+        const conn = await connectToDatabase();
+        if (conn) {
+            res.json({ 
+                success: true, 
+                message: 'connect-mongo working correctly',
+                database: 'connected',
+                sessionStore: 'mongodb',
+                note: 'Sessions will be stored in MongoDB'
+            });
+        } else {
+            res.status(500).json({ 
+                success: false, 
+                message: 'Database connection failed for connect-mongo test' 
+            });
+        }
+    } catch (error) {
+        res.status(500).json({ 
+            success: false, 
+            message: 'connect-mongo error', 
             error: error.message 
         });
     }
