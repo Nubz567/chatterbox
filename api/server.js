@@ -243,6 +243,16 @@ app.get('/ping', (req, res) => {
   res.json({ pong: true, timestamp: new Date().toISOString() });
 });
 
+// Test endpoint for deployment verification
+app.get('/test', (req, res) => {
+  res.json({
+    message: 'Deployment test successful',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    serverless: !!process.env.VERCEL
+  });
+});
+
 // Serve login.html at the /login route, or redirect to groups if already logged in
 app.get('/login', (req, res) => {
   if (req.session.user && req.session.user.email) {

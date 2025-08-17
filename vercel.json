@@ -2,24 +2,21 @@
   "version": 2,
   "builds": [
     { "src": "public/**", "use": "@vercel/static" },
-    { "src": "api/server.js", "use": "@vercel/node" },
-    { "src": "api/test.js", "use": "@vercel/node" }
+    { "src": "api/server.js", "use": "@vercel/node" }
   ],
   "rewrites": [
     { "source": "/socket.io/(.*)", "destination": "/api/server.js" },
     { "source": "/api/(.*)", "destination": "/api/server.js" },
-    { "source": "/test", "destination": "/api/test.js" },
     { "source": "/(.*)", "destination": "/api/server.js" }
   ],
   "functions": {
     "api/server.js": {
       "maxDuration": 30
-    },
-    "api/test.js": {
-      "maxDuration": 10
     }
   },
-  "env": {
-    "NODE_ENV": "production"
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
   }
 } 
