@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const express = require('express');
 const mongoose = require('mongoose');
+const session = require('express-session');
 const app = express();
 
 // MongoDB Connection
@@ -31,9 +32,23 @@ async function connectToDatabase() {
     }
 }
 
+// Session configuration
+const sessionMiddleware = session({
+    secret: process.env.SESSION_SECRET || 'default-secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days
+    }
+});
+
 // Basic middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(sessionMiddleware);
 
 // Simple routes first
 app.get('/', (req, res) => {
@@ -45,7 +60,8 @@ app.get('/health', (req, res) => {
         status: 'ok', 
         timestamp: new Date().toISOString(),
         environment: process.env.NODE_ENV || 'development',
-        database: mongoURI ? 'configured' : 'not configured'
+        database: mongoURI ? 'configured' : 'not configured',
+        session: 'enabled'
     });
 });
 
@@ -65,6 +81,20 @@ app.get('/test-db', async (req, res) => {
     } catch (error) {
         res.status(500).json({ success: false, message: 'Database error', error: error.message });
     }
+});
+
+// Test session functionality
+app.get('/test-session', (req, res) => {
+    if (!req.session.visitCount) {
+        req.session.visitCount = 0;
+    }
+    req.session.visitCount++;
+    res.json({ 
+        success: true, 
+        message: 'Session working',
+        visitCount: req.session.visitCount,
+        sessionId: req.sessionID
+    });
 });
 
 // Error handling
