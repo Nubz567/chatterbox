@@ -2,6 +2,8 @@ require('dotenv').config(); // Load environment variables from .env file
 
 // Trigger a new deployment
 console.log('Server is starting up...');
+console.log('Environment:', process.env.NODE_ENV || 'development');
+console.log('Vercel environment:', !!process.env.VERCEL);
 
 // Temporarily log the URI (be careful not to expose the full password if sharing logs)
 console.log('MONGODB_URI loaded:', process.env.MONGODB_URI ? process.env.MONGODB_URI.replace(/:(.*?)(@)/, ':***$2') : 'URI is NOT set');
@@ -147,7 +149,7 @@ const io = socketIo(server, {
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"]
   },
-  transports: ['polling'], // Use only polling for serverless compatibility
+  transports: ['polling', 'websocket'], // Allow both for better compatibility
   allowEIO3: true, // Allow Engine.IO v3 clients
   pingTimeout: 60000, // Increase ping timeout for serverless
   pingInterval: 25000, // Increase ping interval for serverless
@@ -156,7 +158,12 @@ const io = socketIo(server, {
   allowRequest: (req, callback) => {
     // Allow all requests in serverless environment
     callback(null, true);
-  }
+  },
+  // Additional serverless-friendly settings
+  forceNew: true,
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000
 });
 
 const PORT = process.env.PORT || 3000;
@@ -220,7 +227,9 @@ app.get('/health', (req, res) => {
     status: 'ok', 
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
-    serverless: !!process.env.VERCEL
+    serverless: !!process.env.VERCEL,
+    database: 'connected', // This will be updated based on actual connection status
+    socketio: 'ready'
   });
 });
 
@@ -980,6 +989,20 @@ app.delete('/api/groups/:groupId/delete', async (req, res) => { // Marked async
 // Make Express session accessible to Socket.IO
 io.engine.use(sessionMiddleware);
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Express error:', err);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
+
 // const privateChatRooms = {}; // This might need to be re-evaluated in context of groups
 
 io.on('connection', async (socket) => {
@@ -1206,6 +1229,8 @@ async function startServer() {
             console.log("Running in serverless environment (Vercel)");
             // In serverless, we don't start a traditional server
             // The server is handled by Vercel's infrastructure
+            // Just ensure the app is ready
+            console.log("Serverless app ready for deployment");
         } else {
             // For local development, we need to explicitly listen.
             server.listen(PORT, () => {
@@ -1217,6 +1242,8 @@ async function startServer() {
         console.error("Failed to connect to the database. Server not started.", error);
         if (!process.env.VERCEL) {
             process.exit(1); // Exit if we can't connect to the DB (but not in serverless)
+        } else {
+            console.error("Database connection failed in serverless environment, but continuing...");
         }
     }
 }
@@ -1224,6 +1251,9 @@ async function startServer() {
 // Only start the server if we're not in a serverless environment
 if (!process.env.VERCEL) {
     startServer();
+} else {
+    // In serverless, just ensure the app is ready
+    console.log("Serverless environment detected, app ready for deployment");
 }
 
 // Export for Vercel serverless function

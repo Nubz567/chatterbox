@@ -3,13 +3,15 @@ let socket; // Define socket in a broader scope
 document.addEventListener('DOMContentLoaded', () => {
     // Now, initialize the socket connection with serverless-friendly settings
     socket = io({
-        transports: ['polling'], // Use only polling for serverless compatibility
+        transports: ['polling', 'websocket'], // Allow both for better compatibility
         timeout: 30000, // Increase timeout for serverless
         forceNew: true, // Force new connection
         reconnection: true, // Enable reconnection
         reconnectionAttempts: 5, // Try to reconnect 5 times
         reconnectionDelay: 1000, // Wait 1 second between attempts
-        reconnectionDelayMax: 5000 // Max delay between attempts
+        reconnectionDelayMax: 5000, // Max delay between attempts
+        upgrade: true, // Allow transport upgrades
+        rememberUpgrade: true // Remember transport upgrades
     });
 
     // Show connecting status immediately
