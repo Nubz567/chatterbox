@@ -2,10 +2,23 @@
 require('dotenv').config();
 
 const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
 const mongoose = require('mongoose');
 const session = require('express-session');
 
 const app = express();
+const server = http.createServer(app);
+
+// Socket.IO setup
+const io = socketIo(server, {
+    cors: {
+        origin: ["https://chatterbox-blond.vercel.app", "http://localhost:3000"],
+        methods: ["GET", "POST"],
+        credentials: true
+    },
+    transports: ['polling', 'websocket']
+});
 
 // Session configuration
 app.use(session({
@@ -47,6 +60,16 @@ async function connectToDatabase() {
     }
 }
 
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+    console.log('Socket.IO client connected');
+    socket.emit('test', { message: 'Socket.IO is working!' });
+    
+    socket.on('disconnect', () => {
+        console.log('Socket.IO client disconnected');
+    });
+});
+
 app.get('/', async (req, res) => {
   try {
     const dbStatus = mongoURI ? 'URI provided' : 'No URI';
@@ -63,7 +86,8 @@ app.get('/', async (req, res) => {
       environment: process.env.NODE_ENV || 'development',
       mongoUri: dbStatus,
       database: dbConnected,
-      session: sessionWorking
+      session: sessionWorking,
+      socketio: 'Configured'
     });
   } catch (error) {
     res.json({
