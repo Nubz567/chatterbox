@@ -2,14 +2,27 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/test-deploy.js",
+      "src": "api/server.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
+      "src": "/socket.io/(.*)",
+      "dest": "/api/server.js"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/server.js"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/api/test-deploy.js"
+      "dest": "/api/server.js"
     }
-  ]
+  ],
+  "functions": {
+    "api/server.js": {
+      "maxDuration": 30
+    }
+  }
 } 

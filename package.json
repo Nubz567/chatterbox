@@ -2,11 +2,11 @@
   "name": "chatterbox",
   "version": "1.0.0",
   "description": "A real-time chat application.",
-  "main": "api/test-deploy.js",
+  "main": "api/server.js",
   "scripts": {
-    "start": "node api/test-deploy.js",
+    "start": "node api/server.js",
     "build": "echo 'Build completed successfully'",
-    "dev": "node api/test-deploy.js"
+    "dev": "node api/server.js"
   },
   "keywords": ["chat", "real-time", "socket.io", "express"],
   "author": "",
