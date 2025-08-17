@@ -14,10 +14,6 @@ const server = http.createServer(app);
 
 // MongoDB Connection
 const mongoURI = process.env.MONGODB_URI;
-if (!mongoURI) {
-    console.error('MONGODB_URI is not defined');
-}
-
 let cachedConnection = global.mongoose_connection;
 if (!cachedConnection) {
     cachedConnection = global.mongoose_connection = { conn: null, promise: null };
@@ -70,16 +66,6 @@ function generateUniqueId() {
     return Date.now().toString(36) + Math.random().toString(36).substring(2);
 }
 
-// Socket.IO setup
-const io = socketIo(server, {
-    cors: {
-        origin: ["https://chatterbox-blond.vercel.app", "http://localhost:3000"],
-        methods: ["GET", "POST"],
-        credentials: true
-    },
-    transports: ['polling', 'websocket']
-});
-
 // Session configuration
 const sessionMiddleware = session({
     secret: process.env.SESSION_SECRET || 'default-secret',
@@ -102,6 +88,16 @@ app.use(sessionMiddleware);
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
+
+// Socket.IO setup
+const io = socketIo(server, {
+    cors: {
+        origin: ["https://chatterbox-blond.vercel.app", "http://localhost:3000"],
+        methods: ["GET", "POST"],
+        credentials: true
+    },
+    transports: ['polling', 'websocket']
+});
 
 // Routes
 app.get('/', (req, res) => {
