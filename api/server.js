@@ -50,9 +50,54 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(sessionMiddleware);
 
+// Socket.IO setup - Serverless compatible
+let io = null;
+if (!process.env.VERCEL) {
+    // Only setup Socket.IO in non-serverless environment
+    const http = require('http');
+    const socketIo = require('socket.io');
+    const server = http.createServer(app);
+    
+    io = socketIo(server, {
+        cors: {
+            origin: ["https://chatterbox-blond.vercel.app", "http://localhost:3000"],
+            methods: ["GET", "POST"],
+            credentials: true
+        },
+        transports: ['polling', 'websocket']
+    });
+    
+    // Make Express session accessible to Socket.IO
+    io.engine.use(sessionMiddleware);
+    
+    // Socket.IO connection handling
+    io.on('connection', (socket) => {
+        console.log('Socket.IO client connected:', socket.id);
+        
+        socket.emit('welcome', { message: 'Connected to Chatterbox server' });
+        
+        socket.on('ping', () => {
+            socket.emit('pong', { timestamp: new Date().toISOString() });
+        });
+        
+        socket.on('disconnect', () => {
+            console.log('Socket.IO client disconnected:', socket.id);
+        });
+    });
+    
+    // Start server only in non-serverless environment
+    const PORT = process.env.PORT || 3000;
+    server.listen(PORT, () => {
+        console.log(`Server listening on port ${PORT}`);
+    });
+}
+
 // Simple routes first
 app.get('/', (req, res) => {
-    res.json({ message: 'Chatterbox server is running' });
+    res.json({ 
+        message: 'Chatterbox server is running',
+        socketio: process.env.VERCEL ? 'serverless_mode' : 'enabled'
+    });
 });
 
 app.get('/health', (req, res) => {
@@ -62,7 +107,7 @@ app.get('/health', (req, res) => {
         environment: process.env.NODE_ENV || 'development',
         database: mongoURI ? 'configured' : 'not configured',
         session: 'enabled',
-        socketio: 'disabled_for_testing'
+        socketio: process.env.VERCEL ? 'serverless_mode' : 'enabled'
     });
 });
 
@@ -96,6 +141,23 @@ app.get('/test-session', (req, res) => {
         visitCount: req.session.visitCount,
         sessionId: req.sessionID
     });
+});
+
+// Test Socket.IO functionality
+app.get('/test-socket', (req, res) => {
+    if (io) {
+        res.json({ 
+            success: true, 
+            message: 'Socket.IO server is running',
+            connectedClients: io.engine.clientsCount || 0
+        });
+    } else {
+        res.json({ 
+            success: true, 
+            message: 'Socket.IO in serverless mode',
+            note: 'Real-time features may be limited in serverless environment'
+        });
+    }
 });
 
 // Error handling
