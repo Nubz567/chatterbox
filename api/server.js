@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
+const bcrypt = require('bcrypt');
 const app = express();
 
 // MongoDB Connection
@@ -96,7 +97,8 @@ if (!process.env.VERCEL) {
 app.get('/', (req, res) => {
     res.json({ 
         message: 'Chatterbox server is running',
-        socketio: process.env.VERCEL ? 'serverless_mode' : 'enabled'
+        socketio: process.env.VERCEL ? 'serverless_mode' : 'enabled',
+        bcrypt: 'enabled'
     });
 });
 
@@ -107,7 +109,8 @@ app.get('/health', (req, res) => {
         environment: process.env.NODE_ENV || 'development',
         database: mongoURI ? 'configured' : 'not configured',
         session: 'enabled',
-        socketio: process.env.VERCEL ? 'serverless_mode' : 'enabled'
+        socketio: process.env.VERCEL ? 'serverless_mode' : 'enabled',
+        bcrypt: 'enabled'
     });
 });
 
@@ -156,6 +159,34 @@ app.get('/test-socket', (req, res) => {
             success: true, 
             message: 'Socket.IO in serverless mode',
             note: 'Real-time features may be limited in serverless environment'
+        });
+    }
+});
+
+// Test bcrypt functionality
+app.get('/test-bcrypt', async (req, res) => {
+    try {
+        const testPassword = 'testpassword123';
+        const saltRounds = 10;
+        
+        // Hash a password
+        const hashedPassword = await bcrypt.hash(testPassword, saltRounds);
+        
+        // Verify the password
+        const isMatch = await bcrypt.compare(testPassword, hashedPassword);
+        
+        res.json({ 
+            success: true, 
+            message: 'bcrypt working correctly',
+            originalPassword: testPassword,
+            hashedPassword: hashedPassword.substring(0, 20) + '...',
+            passwordMatch: isMatch
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            success: false, 
+            message: 'bcrypt error', 
+            error: error.message 
         });
     }
 });
