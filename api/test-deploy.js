@@ -6,6 +6,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const mongoose = require('mongoose');
 const session = require('express-session');
+const bcrypt = require('bcrypt');
 
 const app = express();
 const server = http.createServer(app);
@@ -80,6 +81,11 @@ app.get('/', async (req, res) => {
     req.session.test = 'session-working';
     const sessionWorking = req.session.test === 'session-working' ? 'Working' : 'Not working';
     
+    // Test bcrypt
+    const testPassword = 'test123';
+    const hashedPassword = await bcrypt.hash(testPassword, 10);
+    const bcryptWorking = await bcrypt.compare(testPassword, hashedPassword) ? 'Working' : 'Not working';
+    
     res.json({ 
       message: 'Deployment test successful',
       timestamp: new Date().toISOString(),
@@ -87,7 +93,8 @@ app.get('/', async (req, res) => {
       mongoUri: dbStatus,
       database: dbConnected,
       session: sessionWorking,
-      socketio: 'Configured'
+      socketio: 'Configured',
+      bcrypt: bcryptWorking
     });
   } catch (error) {
     res.json({
