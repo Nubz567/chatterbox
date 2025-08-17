@@ -3,8 +3,22 @@ require('dotenv').config();
 
 const express = require('express');
 const mongoose = require('mongoose');
+const session = require('express-session');
 
 const app = express();
+
+// Session configuration
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'default-secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        maxAge: 1000 * 60 * 60 * 24 * 7
+    }
+}));
 
 // MongoDB Connection
 const mongoURI = process.env.MONGODB_URI;
@@ -39,12 +53,17 @@ app.get('/', async (req, res) => {
     const connection = await connectToDatabase();
     const dbConnected = connection ? 'Connected' : 'Failed to connect';
     
+    // Test session
+    req.session.test = 'session-working';
+    const sessionWorking = req.session.test === 'session-working' ? 'Working' : 'Not working';
+    
     res.json({ 
       message: 'Deployment test successful',
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
       mongoUri: dbStatus,
-      database: dbConnected
+      database: dbConnected,
+      session: sessionWorking
     });
   } catch (error) {
     res.json({
