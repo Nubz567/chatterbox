@@ -284,25 +284,41 @@ document.addEventListener('DOMContentLoaded', () => {
     if (messageForm && messageInput) {
         messageForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            console.log('=== MESSAGE SEND DEBUG ===');
             console.log('Message form submitted. Input value:', messageInput.value);
+            console.log('Socket connected:', socket.connected);
+            console.log('Socket ID:', socket.id);
+            console.log('Current user email:', currentUserEmail);
+            console.log('Current group ID:', currentGroupId);
+            
             if (messageInput.value) {
-                console.log('Emitting chat message:', messageInput.value);
+                console.log('✅ Emitting chat message:', messageInput.value);
                 socket.emit('chat message', messageInput.value);
+                console.log('✅ Message emitted to server');
                 socket.emit('typing_stop'); // Also clear typing for self on send
                 clearTimeout(typingTimeout);
                 currentlyTyping[currentUserEmail] = false; // Clear self from local typing display
                 updateTypingIndicator();
                 messageInput.value = '';
+                console.log('✅ Message input cleared');
+            } else {
+                console.log('❌ Message input is empty, not sending');
             }
+            console.log('=== END MESSAGE SEND DEBUG ===');
         });
     }
 
     function displayPublicMessage(data) {
+        console.log('=== MESSAGE DISPLAY DEBUG ===');
         console.log('displayPublicMessage called with data:', data);
         console.log('messagesList element:', messagesList);
+        console.log('messagesList exists:', !!messagesList);
+        console.log('messagesList display style:', messagesList ? getComputedStyle(messagesList).display : 'N/A');
+        console.log('messagesList visibility:', messagesList ? getComputedStyle(messagesList).visibility : 'N/A');
+        console.log('messagesList parent display:', messagesList && messagesList.parentElement ? getComputedStyle(messagesList.parentElement).display : 'N/A');
         
         if (!messagesList) {
-            console.error('messagesList is null or undefined');
+            console.error('❌ messagesList is null or undefined');
             return;
         }
         
@@ -323,14 +339,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (currentUserEmail && data.email === currentUserEmail) {
             item.classList.add('my-message');
+            console.log('✅ Added my-message class');
         } else {
             item.classList.add('other-message');
+            console.log('✅ Added other-message class');
         }
         
         console.log('About to append message item:', item);
+        console.log('Item HTML:', item.outerHTML);
         messagesList.appendChild(item);
+        console.log('✅ Message appended successfully');
+        console.log('Current messagesList children count:', messagesList.children.length);
+        console.log('MessagesList scrollTop before:', messagesList.scrollTop);
         messagesList.scrollTop = messagesList.scrollHeight;
-        console.log('Message appended. Current messagesList children count:', messagesList.children.length);
+        console.log('MessagesList scrollTop after:', messagesList.scrollTop);
+        console.log('=== END MESSAGE DISPLAY DEBUG ===');
 
         if (data.user !== currentUserEmail && canPlaySound && document.hidden) {
             notificationSound.play().catch(e => console.warn("Error playing sound for group chat:", e));
@@ -351,8 +374,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('chat message', (data) => {
-        console.log('chat message event received:', data);
+        console.log('=== MESSAGE RECEIVE DEBUG ===');
+        console.log('✅ chat message event received:', data);
+        console.log('Data type:', typeof data);
+        console.log('Data keys:', Object.keys(data || {}));
+        console.log('User identity check - currentUserEmail:', currentUserEmail, 'data.email:', data.email);
+        console.log('Group identity check - currentGroupId:', currentGroupId, 'data.groupId:', data.groupId);
         displayPublicMessage(data);
+        console.log('=== END MESSAGE RECEIVE DEBUG ===');
     });
 
     socket.on('update userlist', (users) => {
@@ -419,7 +448,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('connect', () => {
-        console.log('Connected to server via Socket.IO');
+        console.log('✅ Connected to server via Socket.IO');
+        console.log('Socket ID:', socket.id);
+        console.log('Socket connected:', socket.connected);
         // Clear any connection error messages
         const errorMessages = document.querySelectorAll('.connection-error');
         errorMessages.forEach(msg => msg.remove());
@@ -429,30 +460,37 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('connect_error', (error) => {
-        console.error('Socket.IO connection error:', error);
+        console.error('❌ Socket.IO connection error:', error);
+        console.error('Error details:', {
+            type: error.type,
+            description: error.description,
+            context: error.context
+        });
         // Show user-friendly error message
         showConnectionError('Connection failed. Trying to reconnect...');
     });
 
     socket.on('reconnect', (attemptNumber) => {
-        console.log('Reconnected to server after', attemptNumber, 'attempts');
+        console.log('✅ Reconnected to server after', attemptNumber, 'attempts');
+        console.log('New Socket ID:', socket.id);
         // Clear error messages on successful reconnection
         const errorMessages = document.querySelectorAll('.connection-error');
         errorMessages.forEach(msg => msg.remove());
     });
 
     socket.on('reconnect_error', (error) => {
-        console.error('Socket.IO reconnection error:', error);
+        console.error('❌ Socket.IO reconnection error:', error);
         showConnectionError('Reconnection failed. Please refresh the page.');
     });
 
     socket.on('reconnect_failed', () => {
-        console.error('Socket.IO reconnection failed after all attempts');
+        console.error('❌ Socket.IO reconnection failed after all attempts');
         showConnectionError('Unable to connect to server. Please check your internet connection and refresh the page.');
     });
 
     socket.on('disconnect', (reason) => {
-        console.log('Disconnected from server:', reason);
+        console.log('❌ Disconnected from server:', reason);
+        console.log('Socket connected:', socket.connected);
         updateConnectionStatus('disconnected');
         if (typingIndicator) typingIndicator.textContent = '';
         if (reason === 'io server disconnect') {
@@ -511,17 +549,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     socket.on('user_identity', (identity) => {
+        console.log('=== USER IDENTITY DEBUG ===');
+        console.log('✅ user_identity event received:', identity);
         currentUserEmail = identity.email;
         currentGroupId = identity.groupId;
         currentGroupName = identity.groupName;
         sessionStorage.setItem('chatterbox_username', identity.username); // Store username
         sessionStorage.setItem('chatterbox_useremail', identity.email);   // Store email
-        console.log(`My identity: ${currentUserEmail} (Username: ${identity.username}), Group: ${currentGroupName} (ID: ${currentGroupId})`);
+        console.log(`✅ Identity set - Email: ${currentUserEmail}, Username: ${identity.username}, Group: ${currentGroupName} (ID: ${currentGroupId})`);
 
         if (groupChatTitle && currentGroupName) {
             groupChatTitle.textContent = currentGroupName;
+            console.log('✅ Group chat title updated');
         }
         setActiveChatWindow(groupChatArea);
+        console.log('✅ Group chat area activated');
         
         // Request user list if it hasn't been populated yet
         setTimeout(() => {
@@ -530,6 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 socket.emit('request_userlist');
             }
         }, 1000);
+        console.log('=== END USER IDENTITY DEBUG ===');
     });
 
     socket.on('private_chat_initiated', (data) => {
@@ -620,4 +663,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     console.log("Chatterbox client.js loaded for group chat functionality.");
+    
+    // Debug function to test message display
+    window.testMessageDisplay = function() {
+        console.log('=== TESTING MESSAGE DISPLAY ===');
+        const testData = {
+            user: 'TestUser',
+            email: 'test@example.com',
+            text: 'This is a test message',
+            timestamp: new Date(),
+            groupId: currentGroupId
+        };
+        console.log('Testing with data:', testData);
+        displayPublicMessage(testData);
+        console.log('=== END TEST ===');
+    };
+    
+    // Debug function to check DOM elements
+    window.checkDOMElements = function() {
+        console.log('=== DOM ELEMENTS CHECK ===');
+        console.log('messagesList:', messagesList);
+        console.log('messageForm:', messageForm);
+        console.log('messageInput:', messageInput);
+        console.log('userList:', userList);
+        console.log('groupChatArea:', groupChatArea);
+        console.log('=== END DOM CHECK ===');
+    };
 });

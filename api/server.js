@@ -224,6 +224,11 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Debug page endpoint
+app.get('/debug', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public', 'debug.html'));
+});
+
 // Simple ping endpoint for basic connectivity testing
 app.get('/ping', (req, res) => {
   res.json({ pong: true, timestamp: new Date().toISOString() });
@@ -1108,7 +1113,14 @@ io.on('connection', async (socket) => {
   });
 
   socket.on('chat message', (msg) => {
+    console.log('=== SERVER MESSAGE DEBUG ===');
+    console.log('📨 Received chat message from client:', msg);
+    console.log('User context - username:', username, 'userEmail:', userEmail, 'currentGroupId:', currentGroupId);
+    console.log('User is anonymous:', username === 'Anonymous');
+    console.log('Group ID exists:', !!currentGroupId);
+    
     if (username !== 'Anonymous' && currentGroupId) {
+      console.log('✅ User authenticated and in group, processing message');
       const messageData = {
         user: username, 
         email: userEmail, 
@@ -1116,18 +1128,32 @@ io.on('connection', async (socket) => {
         timestamp: new Date(),
         groupId: currentGroupId
       };
+      console.log('📝 Created message data:', messageData);
       
-      if (!groupMessageHistories[currentGroupId]) groupMessageHistories[currentGroupId] = [];
+      if (!groupMessageHistories[currentGroupId]) {
+        groupMessageHistories[currentGroupId] = [];
+        console.log('📚 Created new message history for group:', currentGroupId);
+      }
       groupMessageHistories[currentGroupId].push(messageData);
+      console.log('📚 Added message to history. History length:', groupMessageHistories[currentGroupId].length);
+      
       if (groupMessageHistories[currentGroupId].length > MAX_HISTORY_LENGTH) {
         groupMessageHistories[currentGroupId].shift();
+        console.log('📚 Removed oldest message from history');
       }
 
+      console.log('📤 Broadcasting message to group:', currentGroupId);
       io.to(currentGroupId).emit('chat message', messageData);
+      console.log('✅ Message broadcasted successfully');
+      
       socket.to(currentGroupId).emit('user_stopped_typing', { user: username }); 
+      console.log('✅ Typing stopped notification sent');
     } else {
+      console.log('❌ Cannot send message - user anonymous or no group context');
+      console.log('Username:', username, 'Group ID:', currentGroupId);
       socket.emit('auth_error', 'Cannot send message without valid group session.');
     }
+    console.log('=== END SERVER MESSAGE DEBUG ===');
   });
 
   socket.on('send_private_message', (data) => {
