@@ -7,32 +7,10 @@ const socketIo = require('socket.io');
 const mongoose = require('mongoose');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
+const MongoStore = require('connect-mongo');
 
 const app = express();
 const server = http.createServer(app);
-
-// Socket.IO setup
-const io = socketIo(server, {
-    cors: {
-        origin: ["https://chatterbox-blond.vercel.app", "http://localhost:3000"],
-        methods: ["GET", "POST"],
-        credentials: true
-    },
-    transports: ['polling', 'websocket']
-});
-
-// Session configuration
-app.use(session({
-    secret: process.env.SESSION_SECRET || 'default-secret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { 
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        maxAge: 1000 * 60 * 60 * 24 * 7
-    }
-}));
 
 // MongoDB Connection
 const mongoURI = process.env.MONGODB_URI;
@@ -61,6 +39,34 @@ async function connectToDatabase() {
     }
 }
 
+// Session configuration with MongoDB store
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'default-secret',
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({
+        clientPromise: connectToDatabase().then(conn => conn?.connection?.getClient()),
+        collectionName: 'sessions',
+        ttl: 14 * 24 * 60 * 60
+    }),
+    cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        maxAge: 1000 * 60 * 60 * 24 * 7
+    }
+}));
+
+// Socket.IO setup
+const io = socketIo(server, {
+    cors: {
+        origin: ["https://chatterbox-blond.vercel.app", "http://localhost:3000"],
+        methods: ["GET", "POST"],
+        credentials: true
+    },
+    transports: ['polling', 'websocket']
+});
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
     console.log('Socket.IO client connected');
@@ -77,7 +83,7 @@ app.get('/', async (req, res) => {
     const connection = await connectToDatabase();
     const dbConnected = connection ? 'Connected' : 'Failed to connect';
     
-    // Test session
+    // Test session with MongoDB store
     req.session.test = 'session-working';
     const sessionWorking = req.session.test === 'session-working' ? 'Working' : 'Not working';
     
@@ -94,7 +100,8 @@ app.get('/', async (req, res) => {
       database: dbConnected,
       session: sessionWorking,
       socketio: 'Configured',
-      bcrypt: bcryptWorking
+      bcrypt: bcryptWorking,
+      connectMongo: 'Configured'
     });
   } catch (error) {
     res.json({
