@@ -15,6 +15,13 @@ window.addEventListener('load', () => {
     const emojiPanel = document.getElementById('emoji-panel');
     const groupChatTitle = document.querySelector('#group-chat-area .chat-title-bar');
 
+    // Emoji list
+    const EMOJI_LIST = [
+        '😀', '😂', '😍', '🤔', '👍', '❤️', '🎉', '🔥', '😊', '😢', '😮', '👋',
+        '💯', '🙏', '🌟', '💡', '🎈', '🍕', '🚀', '🚲', '💻', '📱', '💰', '👀',
+        '⚙️', '🔒', '🔐', '🔓', '🔑', '🎤', '🎧', '🎵', '🎶', '🎹', '🎸', '🎺'
+    ];
+
     // Get group ID from URL
     const urlParams = new URLSearchParams(window.location.search);
     currentGroupId = urlParams.get('groupId');
@@ -25,6 +32,27 @@ window.addEventListener('load', () => {
     }
 
     console.log('Chat initialized for group:', currentGroupId);
+
+    // Initialize emoji panel
+    function initializeEmojiPanel() {
+        if (emojiPanel) {
+            emojiPanel.innerHTML = '';
+            EMOJI_LIST.forEach(emoji => {
+                const emojiSpan = document.createElement('span');
+                emojiSpan.textContent = emoji;
+                emojiSpan.className = 'emoji';
+                emojiSpan.style.cssText = 'cursor: pointer; padding: 5px; font-size: 20px;';
+                emojiSpan.addEventListener('click', () => {
+                    if (messageInput) {
+                        messageInput.value += emoji;
+                        messageInput.focus();
+                    }
+                    emojiPanel.classList.add('hidden');
+                });
+                emojiPanel.appendChild(emojiSpan);
+            });
+        }
+    }
 
     // Fetch user info
     async function fetchUserInfo() {
@@ -103,7 +131,11 @@ window.addEventListener('load', () => {
 
     // Display message
     function displayMessage(messageData) {
-        if (!messagesList) return;
+        console.log('Displaying message:', messageData);
+        if (!messagesList) {
+            console.error('messagesList element not found');
+            return;
+        }
 
         const item = document.createElement('li');
         const date = new Date(messageData.timestamp);
@@ -128,11 +160,16 @@ window.addEventListener('load', () => {
 
         messagesList.appendChild(item);
         messagesList.scrollTop = messagesList.scrollHeight;
+        console.log('Message displayed successfully');
     }
 
     // Display user list
     function displayUsers(users) {
-        if (!userList) return;
+        console.log('Displaying users:', users);
+        if (!userList) {
+            console.error('userList element not found');
+            return;
+        }
 
         userList.innerHTML = '';
         
@@ -152,22 +189,28 @@ window.addEventListener('load', () => {
             `;
             userList.appendChild(userItem);
         });
+        console.log('Users displayed successfully');
     }
 
     // Poll for new messages
     async function pollMessages() {
+        console.log('Polling for messages...');
         const messages = await fetchMessages();
+        console.log('Fetched messages:', messages);
         
         if (messages.length > 0) {
             const lastMessage = messages[messages.length - 1];
+            console.log('Last message ID:', lastMessageId, 'Current last message ID:', lastMessage.id);
             
             if (lastMessageId !== lastMessage.id) {
                 // Clear messages if this is the first load
                 if (lastMessageId === null) {
+                    console.log('First load - displaying all messages');
                     messagesList.innerHTML = '';
                     messages.forEach(displayMessage);
                 } else {
                     // Only display new messages
+                    console.log('Displaying new messages');
                     const newMessages = messages.filter(msg => 
                         new Date(msg.timestamp) > new Date(lastMessageId)
                     );
@@ -176,12 +219,16 @@ window.addEventListener('load', () => {
                 
                 lastMessageId = lastMessage.id;
             }
+        } else {
+            console.log('No messages found');
         }
     }
 
     // Poll for user updates
     async function pollUsers() {
+        console.log('Polling for users...');
         const users = await fetchUsers();
+        console.log('Fetched users:', users);
         displayUsers(users);
     }
 
@@ -267,6 +314,7 @@ window.addEventListener('load', () => {
     // Initialize chat
     async function initializeChat() {
         await fetchUserInfo();
+        initializeEmojiPanel();
         await pollMessages(); // Load initial messages
         await pollUsers(); // Load initial users
         startPolling();
