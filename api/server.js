@@ -205,6 +205,253 @@ app.get('/groups', (req, res) => {
     }
 });
 
+// API routes for groups
+async function generateJoinCode(length = 6) {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    const existingGroup = await Group.findOne({ joinCode: result });
+    if (existingGroup) {
+        console.log(`Generated duplicate join code ${result}, regenerating.`);
+        return generateJoinCode(length);
+    }
+    console.log(`Generated unique join code: ${result}`);
+    return result;
+}
+
+function generateUniqueId() {
+    return Date.now().toString(36) + Math.random().toString(36).substring(2);
+}
+
+app.post('/api/groups/create', async (req, res) => {
+    try {
+        await connectToDatabase();
+        if (!req.session.user || !req.session.user.email) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        const { name } = req.body;
+        if (!name || name.trim() === '') {
+            return res.status(400).json({ error: 'Group name is required' });
+        }
+
+        const adminEmail = req.session.user.email;
+        const groupId = generateUniqueId();
+        const joinCode = await generateJoinCode();
+
+        try {
+            const newGroup = new Group({
+                id: groupId,
+                name: name.trim(),
+                adminEmail: adminEmail,
+                joinCode: joinCode,
+                members: [adminEmail]
+            });
+
+            const savedGroup = await newGroup.save();
+            console.log(`Group created: ${savedGroup.name} (ID: ${savedGroup.id}), Code: ${savedGroup.joinCode} by ${adminEmail}`);
+            res.status(201).json({ 
+                id: savedGroup.id,
+                name: savedGroup.name,
+                adminEmail: savedGroup.adminEmail,
+                joinCode: savedGroup.joinCode,
+                members: savedGroup.members
+            });
+        } catch (error) {
+            console.error('Error creating group:', error);
+            if (error.code === 11000) {
+                return res.status(400).json({ error: 'Failed to generate unique join code. Please try again.' });
+            }
+            res.status(500).json({ error: 'An error occurred while creating the group.' });
+        }
+    } catch (error) {
+        console.error("Error during group creation:", error);
+        res.status(500).json({ error: 'An error occurred while creating the group.' });
+    }
+});
+
+app.post('/api/groups/join', async (req, res) => {
+    try {
+        await connectToDatabase();
+        if (!req.session.user || !req.session.user.email) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        const { joinCode } = req.body;
+        if (!joinCode || joinCode.trim() === '') {
+            return res.status(400).json({ error: 'Join code is required' });
+        }
+
+        const userEmail = req.session.user.email;
+        
+        try {
+            const targetGroup = await Group.findOne({ joinCode: joinCode.trim() });
+
+            if (!targetGroup) {
+                return res.status(404).json({ error: 'Group not found with this join code' });
+            }
+
+            if (targetGroup.archivedDueToUserDeletion) {
+                targetGroup.archivedDueToUserDeletion = false;
+                console.log(`Group "${targetGroup.name}" (ID: ${targetGroup._id}) was archived and is now restored by user ${userEmail} joining with code.`);
+            }
+
+            if (targetGroup.members.includes(userEmail)) {
+                await targetGroup.save(); 
+                return res.status(400).json({ error: 'User is already a member of this group', group: targetGroup });
+            }
+
+            targetGroup.members.push(userEmail);
+            await targetGroup.save();
+
+            console.log(`User ${userEmail} joined group: ${targetGroup.name} (ID: ${targetGroup._id})`);
+            res.status(200).json({
+                id: targetGroup._id,
+                name: targetGroup.name,
+                adminEmail: targetGroup.adminEmail,
+                joinCode: targetGroup.joinCode,
+                members: targetGroup.members
+            });
+        } catch (error) {
+            console.error('Error joining group:', error);
+            res.status(500).json({ error: 'An error occurred while joining the group.' });
+        }
+    } catch (error) {
+        console.error("Error during group joining:", error);
+        res.status(500).json({ error: 'An error occurred while joining the group.' });
+    }
+});
+
+app.get('/api/user/groups', async (req, res) => {
+    try {
+        await connectToDatabase();
+        if (!req.session.user || !req.session.user.email) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+        const userEmail = req.session.user.email;
+        
+        try {
+            const memberOfGroups = await Group.find({
+                members: userEmail,
+                archivedDueToUserDeletion: { $ne: true }
+            });
+            
+            res.status(200).json(memberOfGroups);
+
+        } catch (error) {
+            console.error('Error fetching user groups:', error);
+            res.status(500).json({ error: 'An error occurred while fetching your groups.' });
+        }
+    } catch (error) {
+        console.error("Error during fetching user groups:", error);
+        res.status(500).json({ error: 'An error occurred while fetching your groups.' });
+    }
+});
+
+app.delete('/api/groups/:groupId', async (req, res) => {
+    try {
+        await connectToDatabase();
+        if (!req.session.user || !req.session.user.email) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        const { groupId } = req.params;
+        const userEmail = req.session.user.email;
+
+        const group = await Group.findOne({ id: groupId });
+        if (!group) {
+            return res.status(404).json({ error: 'Group not found' });
+        }
+
+        if (group.adminEmail !== userEmail) {
+            return res.status(403).json({ error: 'Only the group admin can delete the group' });
+        }
+
+        await Group.deleteOne({ id: groupId });
+        console.log(`Group ${groupId} deleted by admin ${userEmail}`);
+        res.status(200).json({ message: 'Group deleted successfully' });
+
+    } catch (error) {
+        console.error('Error deleting group:', error);
+        res.status(500).json({ error: 'An error occurred while deleting the group.' });
+    }
+});
+
+app.post('/api/groups/:groupId/leave', async (req, res) => {
+    try {
+        await connectToDatabase();
+        if (!req.session.user || !req.session.user.email) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        const { groupId } = req.params;
+        const userEmail = req.session.user.email;
+
+        const group = await Group.findOne({ id: groupId });
+        if (!group) {
+            return res.status(404).json({ error: 'Group not found' });
+        }
+
+        if (!group.members.includes(userEmail)) {
+            return res.status(400).json({ error: 'User is not a member of this group' });
+        }
+
+        if (group.adminEmail === userEmail) {
+            return res.status(400).json({ error: 'Group admin cannot leave the group. Please delete the group instead.' });
+        }
+
+        group.members = group.members.filter(member => member !== userEmail);
+        await group.save();
+
+        console.log(`User ${userEmail} left group ${groupId}`);
+        res.status(200).json({ message: 'Left group successfully' });
+
+    } catch (error) {
+        console.error('Error leaving group:', error);
+        res.status(500).json({ error: 'An error occurred while leaving the group.' });
+    }
+});
+
+// Chat route
+app.get('/chat', async (req, res) => {
+    try {
+        await connectToDatabase();
+        const { groupId, groupName } = req.query;
+
+        if (!req.session.user || !req.session.user.email) {
+            return res.redirect('/login');
+        }
+
+        if (!groupId) {
+            return res.redirect('/groups?error=No+group+selected');
+        }
+
+        const group = await Group.findOne({ id: groupId });
+
+        if (!group) {
+            return res.redirect('/groups?error=Group+not+found');
+        }
+
+        if (!group.members.includes(req.session.user.email)) {
+            return res.redirect('/groups?error=Not+a+member+of+this+group');
+        }
+
+        req.session.currentGroup = { id: groupId, name: groupName || group.name };
+        req.session.save((err) => {
+            if (err) {
+                console.error('Error saving session:', err);
+                return res.status(500).send('Error preparing chat session.');
+            }
+            res.sendFile(path.join(__dirname, '../public', 'chat.html'));
+        });
+    } catch (error) {
+        console.error('Error loading chat page:', error);
+        res.status(500).send('Error loading chat page. <a href="/groups">Go back to groups</a>');
+    }
+});
+
 // Error handling
 app.use((err, req, res, next) => {
     console.error('Express error:', err);
