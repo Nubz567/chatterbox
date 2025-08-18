@@ -23,6 +23,10 @@ async function connectToDatabase() {
         cachedConnection.promise = mongoose.connect(mongoURI, {
             bufferCommands: false,
             serverSelectionTimeoutMS: 5000,
+        }).catch(err => {
+            console.error('MongoDB connection error:', err);
+            cachedConnection.promise = null;
+            throw err;
         });
     }
     try {
@@ -31,7 +35,7 @@ async function connectToDatabase() {
     } catch (e) {
         cachedConnection.promise = null;
         console.error('Database connection failed:', e);
-        return null;
+        throw e;
     }
 }
 
@@ -59,7 +63,7 @@ const sessionMiddleware = session({
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
-        clientPromise: connectToDatabase().then(conn => conn?.connection?.getClient()),
+        mongoUrl: mongoURI,
         collectionName: 'sessions',
         ttl: 14 * 24 * 60 * 60 // 14 days
     }),
@@ -107,6 +111,15 @@ app.get('/test-session', (req, res) => {
     });
 });
 
+// Simple test endpoint
+app.get('/test', (req, res) => {
+    res.json({ 
+        message: 'Server is working',
+        timestamp: new Date().toISOString(),
+        mongoURI: mongoURI ? 'configured' : 'not configured'
+    });
+});
+
 // Login routes
 app.get('/login', (req, res) => {
     console.log('Login page requested. Session data:', req.session);
@@ -140,17 +153,8 @@ app.post('/login', async (req, res) => {
 
         if (passwordsMatch) {
             req.session.user = { email: user.email, username: user.username };
-            
-            // Save session explicitly and add debugging
-            req.session.save((err) => {
-                if (err) {
-                    console.error('Session save error:', err);
-                    return res.status(500).json({ success: false, message: 'Session error during login.' });
-                }
-                console.log('Session saved successfully for user:', user.email);
-                console.log('Session data:', req.session);
-                return res.status(200).json({ success: true, message: 'Login successful', redirectTo: '/groups' });
-            });
+            console.log('Session set for user:', user.email);
+            return res.status(200).json({ success: true, message: 'Login successful', redirectTo: '/groups' });
         } else {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
