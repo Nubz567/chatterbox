@@ -498,138 +498,109 @@ app.get('/chat', async (req, res) => {
     }
 });
 
-// Socket.IO setup - Serverless compatible
-let io = null;
-if (!process.env.VERCEL) {
-    // Only setup Socket.IO in non-serverless environment
-    const http = require('http');
-    const socketIo = require('socket.io');
-    const server = http.createServer(app);
+// Simple in-memory message storage (for demo purposes)
+// In production, you'd want to use a database
+const groupMessages = {};
+const MAX_MESSAGES = 100;
 
-    io = socketIo(server, {
-        cors: {
-            origin: ["https://chatterbox-blond.vercel.app", "http://localhost:3000"],
-            methods: ["GET", "POST"],
-            credentials: true
-        },
-        transports: ['polling', 'websocket']
-    });
-
-    // Make Express session accessible to Socket.IO
-    io.engine.use(sessionMiddleware);
-
-    // Global stores for message history and active users
-    const groupMessageHistories = {};
-    const groupActiveUsers = {};
-    const MAX_HISTORY_LENGTH = 100;
-
-    function generateUniqueId() {
-        return Date.now().toString(36) + Math.random().toString(36).substring(2);
-    }
-
-    // Socket.IO connection handling
-    io.on('connection', async (socket) => {
-        try {
-            await connectToDatabase();
-            const session = socket.request.session;
-
-            session.reload((err) => {
-                if (err) {
-                    console.error('Socket.IO session reload error:', err);
-                    socket.emit('auth_error', 'A server error occurred while connecting to chat.');
-                    return socket.disconnect(true);
-                }
-
-                let userEmail = 'Anonymous';
-                let username = 'Anonymous';
-                let currentGroupId = null;
-
-                if (session && session.user && session.user.email && session.user.username && session.currentGroup && session.currentGroup.id) {
-                    userEmail = session.user.email;
-                    username = session.user.username;
-                    currentGroupId = session.currentGroup.id;
-                    const currentGroupName = session.currentGroup.name;
-
-                    socket.join(currentGroupId);
-                    console.log(`User ${username} (Email: ${userEmail}) connected to group room: ${currentGroupId} (${currentGroupName})`);
-
-                    socket.emit('user_identity', { email: userEmail, username: username, groupName: currentGroupName, groupId: currentGroupId });
-
-                    if (!groupActiveUsers[currentGroupId]) {
-                        groupActiveUsers[currentGroupId] = new Map();
-                    }
-                    if (!groupActiveUsers[currentGroupId].has(userEmail)) {
-                        groupActiveUsers[currentGroupId].set(userEmail, username);
-                        const userListArray = Array.from(groupActiveUsers[currentGroupId], ([email, uname]) => ({ email: email, username: uname }));
-                        console.log(`[SERVER] Emitting update userlist for group ${currentGroupId}:`, userListArray);
-                        io.to(currentGroupId).emit('update userlist', userListArray);
-                        console.log(`Active users in ${currentGroupId}:`, userListArray);
-                    } else {
-                        console.log(`[SERVER] User ${userEmail} already in group ${currentGroupId}, not adding again`);
-                        const userListArray = Array.from(groupActiveUsers[currentGroupId], ([email, uname]) => ({ email: email, username: uname }));
-                        console.log(`[SERVER] Emitting current userlist for group ${currentGroupId}:`, userListArray);
-                        socket.emit('update userlist', userListArray);
-                    }
-
-                    if (!groupMessageHistories[currentGroupId]) {
-                        groupMessageHistories[currentGroupId] = [];
-                    }
-                    socket.emit('load history', groupMessageHistories[currentGroupId]);
-                    console.log(`Sent message history for group ${currentGroupId} to ${userEmail}`);
-                } else {
-                    console.log('Anonymous or no group context user connected to socket. Disconnecting.');
-                    socket.emit('auth_error', 'No valid group session. Please select a group.');
-                    return socket.disconnect(true);
-                }
-
-                socket.on('chat message', (msg) => {
-                    if (username !== 'Anonymous' && currentGroupId) {
-                        const messageData = {
-                            user: username,
-                            email: userEmail,
-                            text: msg,
-                            timestamp: new Date(),
-                            groupId: currentGroupId
-                        };
-                        
-                        if (!groupMessageHistories[currentGroupId]) groupMessageHistories[currentGroupId] = [];
-                        groupMessageHistories[currentGroupId].push(messageData);
-                        if (groupMessageHistories[currentGroupId].length > MAX_HISTORY_LENGTH) {
-                            groupMessageHistories[currentGroupId].shift();
-                        }
-
-                        io.to(currentGroupId).emit('chat message', messageData);
-                        socket.to(currentGroupId).emit('user_stopped_typing', { user: username });
-                    } else {
-                        socket.emit('auth_error', 'Cannot send message without valid group session.');
-                    }
-                });
-
-                socket.on('disconnect', () => {
-                    if (userEmail !== 'Anonymous' && currentGroupId && groupActiveUsers[currentGroupId] && groupActiveUsers[currentGroupId].has(userEmail)) {
-                        console.log(`[SERVER] User ${username} (${userEmail}) disconnecting from group ${currentGroupId}`);
-                        groupActiveUsers[currentGroupId].delete(userEmail);
-                        const userListArray = Array.from(groupActiveUsers[currentGroupId], ([email, uname]) => ({ email: email, username: uname }));
-                        console.log(`[SERVER] Emitting updated userlist after disconnect for group ${currentGroupId}:`, userListArray);
-                        io.to(currentGroupId).emit('update userlist', userListArray);
-                        console.log(`${username} (Email: ${userEmail}) disconnected from group ${currentGroupId}. Active users:`, userListArray);
-                        socket.to(currentGroupId).emit('user_stopped_typing', { user: username });
-                    }
-                });
-            });
-        } catch (error) {
-            console.error('An error occurred during socket connection setup:', error);
-            socket.emit('auth_error', 'A server error occurred. Please try refreshing.');
-            socket.disconnect(true);
+// API endpoint to send a message
+app.post('/api/chat/send', async (req, res) => {
+    try {
+        if (!req.session.user || !req.session.user.email) {
+            return res.status(401).json({ error: 'Not authenticated' });
         }
-    });
 
-    // Start server only in non-serverless environment
-    const PORT = process.env.PORT || 3000;
-    server.listen(PORT, () => {
-        console.log(`Server listening on port ${PORT}`);
-    });
-}
+        const { message, groupId } = req.body;
+        
+        if (!message || !groupId) {
+            return res.status(400).json({ error: 'Message and groupId are required' });
+        }
+
+        // Verify user is member of the group
+        const group = await Group.findOne({ id: groupId });
+        if (!group || !group.members.includes(req.session.user.email)) {
+            return res.status(403).json({ error: 'Not a member of this group' });
+        }
+
+        const messageData = {
+            id: Date.now().toString(),
+            user: req.session.user.username,
+            email: req.session.user.email,
+            text: message,
+            timestamp: new Date(),
+            groupId: groupId
+        };
+
+        if (!groupMessages[groupId]) {
+            groupMessages[groupId] = [];
+        }
+
+        groupMessages[groupId].push(messageData);
+
+        // Keep only the last MAX_MESSAGES messages
+        if (groupMessages[groupId].length > MAX_MESSAGES) {
+            groupMessages[groupId] = groupMessages[groupId].slice(-MAX_MESSAGES);
+        }
+
+        res.json({ success: true, message: messageData });
+    } catch (error) {
+        console.error('Error sending message:', error);
+        res.status(500).json({ error: 'Failed to send message' });
+    }
+});
+
+// API endpoint to get messages
+app.get('/api/chat/messages/:groupId', async (req, res) => {
+    try {
+        if (!req.session.user || !req.session.user.email) {
+            return res.status(401).json({ error: 'Not authenticated' });
+        }
+
+        const { groupId } = req.params;
+
+        // Verify user is member of the group
+        const group = await Group.findOne({ id: groupId });
+        if (!group || !group.members.includes(req.session.user.email)) {
+            return res.status(403).json({ error: 'Not a member of this group' });
+        }
+
+        const messages = groupMessages[groupId] || [];
+        res.json({ messages });
+    } catch (error) {
+        console.error('Error getting messages:', error);
+        res.status(500).json({ error: 'Failed to get messages' });
+    }
+});
+
+// API endpoint to get online users
+app.get('/api/chat/users/:groupId', async (req, res) => {
+    try {
+        if (!req.session.user || !req.session.user.email) {
+            return res.status(401).json({ error: 'Not authenticated' });
+        }
+
+        const { groupId } = req.params;
+
+        // Verify user is member of the group
+        const group = await Group.findOne({ id: groupId });
+        if (!group || !group.members.includes(req.session.user.email)) {
+            return res.status(403).json({ error: 'Not a member of this group' });
+        }
+
+        // For now, return all group members as "online"
+        // In a real app, you'd track actual online status
+        const users = group.members.map(email => ({
+            email: email,
+            username: email.split('@')[0], // Simple username extraction
+            online: true
+        }));
+
+        res.json({ users });
+    } catch (error) {
+        console.error('Error getting users:', error);
+        res.status(500).json({ error: 'Failed to get users' });
+    }
+});
 
 // Error handling
 app.use((err, req, res, next) => {
