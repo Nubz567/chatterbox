@@ -52,10 +52,6 @@ window.addEventListener('load', () => {
 
     // Fetch and display user's groups
     async function fetchUserGroups() {
-        // Ensure user data (including email for admin check) is fetched first
-        if (!currentUserEmail) {
-            await fetchAndStoreCurrentUser();
-        }
         try {
             const response = await fetch('/api/user/groups', { credentials: 'include' });
             if (!response.ok) {
@@ -343,6 +339,11 @@ window.addEventListener('load', () => {
 
     // Initial fetch of user data and then groups
     async function initializePage() {
+        // Show loading indicator
+        if (myGroupsList) {
+            myGroupsList.innerHTML = '<li style="text-align: center; padding: 20px; color: #666;">Loading groups...</li>';
+        }
+        
         await fetchAndStoreCurrentUser(); // Fetch user data first
         await fetchUserGroups();          // Then fetch their groups
     }
