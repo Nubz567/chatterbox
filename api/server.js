@@ -417,7 +417,7 @@ app.delete('/api/groups/:groupId', async (req, res) => {
 
         await Group.deleteOne({ id: groupId });
         console.log(`Group ${groupId} deleted by admin ${userEmail}`);
-        res.status(200).json({ message: 'Group deleted successfully' });
+        res.status(200).json({ success: true, message: 'Group deleted successfully' });
 
     } catch (error) {
         console.error('Error deleting group:', error);
@@ -452,7 +452,7 @@ app.post('/api/groups/:groupId/leave', async (req, res) => {
         await group.save();
 
         console.log(`User ${userEmail} left group ${groupId}`);
-        res.status(200).json({ message: 'Left group successfully' });
+        res.status(200).json({ success: true, message: 'Left group successfully' });
 
     } catch (error) {
         console.error('Error leaving group:', error);
