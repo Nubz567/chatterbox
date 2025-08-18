@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (confirm(`Are you sure you want to PERMANENTLY DELETE the group "${escapeHTML(groupName)}"? This cannot be undone.`)) {
             try {
-                response = await fetch(`/api/groups/${groupId}/delete`, {
+                response = await fetch(`/api/groups/${groupId}`, {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include'
