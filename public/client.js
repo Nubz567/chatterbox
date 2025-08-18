@@ -1,5 +1,6 @@
 let currentGroupId = null;
 let currentUserEmail = null;
+let currentUsername = null;
 let lastMessageId = null;
 let pollInterval = null;
 
@@ -14,12 +15,14 @@ window.addEventListener('load', () => {
     const emojiButton = document.getElementById('emoji-button');
     const emojiPanel = document.getElementById('emoji-panel');
     const groupChatTitle = document.querySelector('#group-chat-area .chat-title-bar');
+    const usernameDisplay = document.getElementById('username-display');
 
     // Emoji list
     const EMOJI_LIST = [
         '😀', '😂', '😍', '🤔', '👍', '❤️', '🎉', '🔥', '😊', '😢', '😮', '👋',
         '💯', '🙏', '🌟', '💡', '🎈', '🍕', '🚀', '🚲', '💻', '📱', '💰', '👀',
-        '⚙️', '🔒', '🔐', '🔓', '🔑', '🎤', '🎧', '🎵', '🎶', '🎹', '🎸', '🎺'
+        '⚙️', '🔒', '🔐', '🔓', '🔑', '🎤', '🎧', '🎵', '🎶', '🎹', '🎸', '🎺',
+        '🎨', '🎥', '🎬', '🎭', '🎲', '🎯', '🎳', '🎰', '🎮', ''
     ];
 
     // Get group ID from URL
@@ -54,6 +57,13 @@ window.addEventListener('load', () => {
         }
     }
 
+    // Update username display
+    function updateUsernameDisplay() {
+        if (usernameDisplay && currentUsername) {
+            usernameDisplay.textContent = `Logged in as: ${currentUsername}`;
+        }
+    }
+
     // Fetch user info
     async function fetchUserInfo() {
         try {
@@ -61,7 +71,9 @@ window.addEventListener('load', () => {
             if (response.ok) {
                 const userData = await response.json();
                 currentUserEmail = userData.email;
+                currentUsername = userData.username;
                 console.log('Current user:', userData);
+                updateUsernameDisplay();
             }
         } catch (error) {
             console.error('Error fetching user info:', error);
@@ -131,7 +143,6 @@ window.addEventListener('load', () => {
 
     // Display message
     function displayMessage(messageData) {
-        console.log('Displaying message:', messageData);
         if (!messagesList) {
             console.error('messagesList element not found');
             return;
@@ -160,12 +171,10 @@ window.addEventListener('load', () => {
 
         messagesList.appendChild(item);
         messagesList.scrollTop = messagesList.scrollHeight;
-        console.log('Message displayed successfully');
     }
 
     // Display user list
     function displayUsers(users) {
-        console.log('Displaying users:', users);
         if (!userList) {
             console.error('userList element not found');
             return;
@@ -189,28 +198,22 @@ window.addEventListener('load', () => {
             `;
             userList.appendChild(userItem);
         });
-        console.log('Users displayed successfully');
     }
 
     // Poll for new messages
     async function pollMessages() {
-        console.log('Polling for messages...');
         const messages = await fetchMessages();
-        console.log('Fetched messages:', messages);
         
         if (messages.length > 0) {
             const lastMessage = messages[messages.length - 1];
-            console.log('Last message ID:', lastMessageId, 'Current last message ID:', lastMessage.id);
             
             if (lastMessageId !== lastMessage.id) {
                 // Clear messages if this is the first load
                 if (lastMessageId === null) {
-                    console.log('First load - displaying all messages');
                     messagesList.innerHTML = '';
                     messages.forEach(displayMessage);
                 } else {
                     // Only display new messages
-                    console.log('Displaying new messages');
                     const newMessages = messages.filter(msg => 
                         new Date(msg.timestamp) > new Date(lastMessageId)
                     );
@@ -219,30 +222,26 @@ window.addEventListener('load', () => {
                 
                 lastMessageId = lastMessage.id;
             }
-        } else {
-            console.log('No messages found');
         }
     }
 
     // Poll for user updates
     async function pollUsers() {
-        console.log('Polling for users...');
         const users = await fetchUsers();
-        console.log('Fetched users:', users);
         displayUsers(users);
     }
 
     // Start polling
     function startPolling() {
-        // Poll messages every 2 seconds
+        // Poll messages every 3 seconds (reduced frequency to be less buggy)
         pollInterval = setInterval(async () => {
             await pollMessages();
-        }, 2000);
+        }, 3000);
 
-        // Poll users every 10 seconds
+        // Poll users every 15 seconds (reduced frequency)
         setInterval(async () => {
             await pollUsers();
-        }, 10000);
+        }, 15000);
     }
 
     // Stop polling
