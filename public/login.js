@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('load', () => {
     const loginForm = document.getElementById('login-form');
     const errorDiv = document.getElementById('login-error-message');
     const successDiv = document.getElementById('login-success-message');

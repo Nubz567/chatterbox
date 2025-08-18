@@ -1,6 +1,6 @@
 let currentUserEmail = null; // Store current user's email globally in this script
 
-document.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('load', () => {
     const myGroupsList = document.getElementById('my-groups-list');
     const noGroupsMessage = document.getElementById('no-groups-message');
     const createGroupForm = document.getElementById('create-group-form');

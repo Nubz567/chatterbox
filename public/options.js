@@ -14,7 +14,7 @@ if (savedSettings.theme === 'dark') {
     document.body.classList.remove('dark-theme');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('load', () => {
     // Get modal elements
     const optionsButton = document.querySelector('.options-button');
     const optionsModal = document.querySelector('.options-modal');

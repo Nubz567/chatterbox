@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
+window.addEventListener('load', function() {
     // Create help button
     const helpButton = document.createElement('button');
     helpButton.className = 'help-button';

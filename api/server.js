@@ -113,12 +113,12 @@ app.get('/test-session', (req, res) => {
 
 // User API endpoint
 app.get('/api/user', (req, res) => {
-    if (!req.session.user || !req.session.user.email) {
+  if (!req.session.user || !req.session.user.email) {
         return res.status(401).json({ error: 'User not authenticated' });
     }
-    res.json({
-        email: req.session.user.email,
-        username: req.session.user.username
+        res.json({
+            email: req.session.user.email,
+            username: req.session.user.username
     });
 });
 
@@ -139,7 +139,7 @@ app.get('/login', (req, res) => {
     if (req.session.user && req.session.user.email) {
         console.log('User already logged in, redirecting to groups');
         res.redirect('/groups');
-    } else {
+            } else {
         console.log('No user session, showing login page');
         res.sendFile(path.join(__dirname, '../public', 'login.html'));
     }

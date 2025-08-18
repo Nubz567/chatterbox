@@ -1,6 +1,6 @@
 let socket; // Define socket in a broader scope
 
-document.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('load', () => {
     // Now, initialize the socket connection with serverless-friendly settings
     socket = io({
         transports: ['polling', 'websocket'], // Allow both for better compatibility
