@@ -64,9 +64,9 @@ const sessionMiddleware = session({
         ttl: 14 * 24 * 60 * 60 // 14 days
     }),
     cookie: { 
-        secure: process.env.NODE_ENV === 'production',
+        secure: false, // Set to false for Vercel compatibility
         httpOnly: true,
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        sameSite: 'lax', // Simplified for Vercel
         maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days
     }
 });
@@ -96,11 +96,27 @@ app.get('/health', (req, res) => {
     });
 });
 
+// Session test endpoint
+app.get('/test-session', (req, res) => {
+    res.json({
+        sessionId: req.sessionID,
+        sessionData: req.session,
+        user: req.session.user,
+        hasUser: !!(req.session.user && req.session.user.email),
+        cookie: req.headers.cookie
+    });
+});
+
 // Login routes
 app.get('/login', (req, res) => {
+    console.log('Login page requested. Session data:', req.session);
+    console.log('User in session:', req.session.user);
+    
     if (req.session.user && req.session.user.email) {
+        console.log('User already logged in, redirecting to groups');
         res.redirect('/groups');
     } else {
+        console.log('No user session, showing login page');
         res.sendFile(path.join(__dirname, '../public', 'login.html'));
     }
 });
@@ -124,7 +140,17 @@ app.post('/login', async (req, res) => {
 
         if (passwordsMatch) {
             req.session.user = { email: user.email, username: user.username };
-            return res.status(200).json({ success: true, message: 'Login successful', redirectTo: '/groups' });
+            
+            // Save session explicitly and add debugging
+            req.session.save((err) => {
+                if (err) {
+                    console.error('Session save error:', err);
+                    return res.status(500).json({ success: false, message: 'Session error during login.' });
+                }
+                console.log('Session saved successfully for user:', user.email);
+                console.log('Session data:', req.session);
+                return res.status(200).json({ success: true, message: 'Login successful', redirectTo: '/groups' });
+            });
         } else {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
@@ -198,9 +224,14 @@ app.post('/logout', (req, res) => {
 
 // Groups routes
 app.get('/groups', (req, res) => {
+    console.log('Groups page requested. Session data:', req.session);
+    console.log('User in session:', req.session.user);
+    
     if (req.session.user && req.session.user.email) {
+        console.log('User authenticated, showing groups page');
         res.sendFile(path.join(__dirname, '../public', 'groups.html'));
     } else {
+        console.log('No user session, redirecting to login');
         res.redirect('/login');
     }
 });
