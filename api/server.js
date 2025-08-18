@@ -60,14 +60,14 @@ const Group = mongoose.model('Group', groupSchema);
 // Session configuration with MongoDB store
 const sessionMiddleware = session({
     secret: process.env.SESSION_SECRET || 'default-secret',
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({
         mongoUrl: mongoURI,
         collectionName: 'sessions',
         ttl: 14 * 24 * 60 * 60 // 14 days
-    }),
-    cookie: { 
+  }),
+  cookie: { 
         secure: false, // Set to false for Vercel compatibility
         httpOnly: true,
         sameSite: 'lax', // Simplified for Vercel
@@ -85,19 +85,19 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // Routes
 app.get('/', (req, res) => {
-    res.redirect('/login');
+  res.redirect('/login');
 });
 
 app.get('/health', (req, res) => {
-    res.json({ 
-        status: 'ok', 
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development',
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
         database: mongoURI ? 'configured' : 'not configured',
         session: 'enabled',
         sessionStore: 'mongodb',
         bcrypt: 'enabled'
-    });
+  });
 });
 
 // Session test endpoint
@@ -108,6 +108,17 @@ app.get('/test-session', (req, res) => {
         user: req.session.user,
         hasUser: !!(req.session.user && req.session.user.email),
         cookie: req.headers.cookie
+    });
+});
+
+// User API endpoint
+app.get('/api/user', (req, res) => {
+    if (!req.session.user || !req.session.user.email) {
+        return res.status(401).json({ error: 'User not authenticated' });
+    }
+    res.json({
+        email: req.session.user.email,
+        username: req.session.user.username
     });
 });
 
@@ -135,30 +146,30 @@ app.get('/login', (req, res) => {
 });
 
 app.post('/login', async (req, res) => {
-    try {
-        await connectToDatabase();
-        const { email, password } = req.body;
+  try {
+    await connectToDatabase();
+  const { email, password } = req.body;
 
-        if (!email || !password) {
-            return res.status(400).json({ success: false, message: 'Missing email or password' });
-        }
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Missing email or password' });
+    }
 
-        const user = await User.findOne({ email: email });
+    const user = await User.findOne({ email: email });
 
-        if (!user) {
-            return res.status(401).json({ success: false, message: 'Invalid credentials' });
-        }
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
 
         const passwordsMatch = await bcrypt.compare(password, user.hashedPassword);
 
         if (passwordsMatch) {
-            req.session.user = { email: user.email, username: user.username };
+          req.session.user = { email: user.email, username: user.username };
             console.log('Session set for user:', user.email);
-            return res.status(200).json({ success: true, message: 'Login successful', redirectTo: '/groups' });
+      return res.status(200).json({ success: true, message: 'Login successful', redirectTo: '/groups' });
         } else {
-            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
-    } catch (error) {
+  } catch (error) {
         console.error('Login error:', error);
         return res.status(500).json({ success: false, message: 'Server error during login.' });
     }
@@ -166,45 +177,45 @@ app.post('/login', async (req, res) => {
 
 // Registration routes
 app.get('/register', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public', 'register.html'));
+  res.sendFile(path.join(__dirname, '../public', 'register.html'));
 });
 
 app.post('/register', async (req, res) => {
-    try {
-        await connectToDatabase();
-        const { email, username, password, confirmPassword } = req.body;
-        const saltRounds = 10;
+  try {
+    await connectToDatabase();
+  const { email, username, password, confirmPassword } = req.body;
+  const saltRounds = 10;
 
-        if (!email || !username || !password || !confirmPassword) {
-            return res.status(400).json({ success: false, message: 'Missing fields', field: 'all'});
-        }
-        if (password !== confirmPassword) {
-            return res.status(400).json({ success: false, message: 'Passwords do not match', field: 'confirmPassword'});
-        }
-        if (username.length < 3 || username.length > 20) {
-            return res.status(400).json({ success: false, message: 'Username must be 3-20 characters', field: 'username'});
-        }
-        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-            return res.status(400).json({ success: false, message: 'Username can only contain letters, numbers, and underscores', field: 'username'});
-        }
+  if (!email || !username || !password || !confirmPassword) {
+    return res.status(400).json({ success: false, message: 'Missing fields', field: 'all'});
+  }
+  if (password !== confirmPassword) {
+    return res.status(400).json({ success: false, message: 'Passwords do not match', field: 'confirmPassword'});
+  }
+  if (username.length < 3 || username.length > 20) {
+    return res.status(400).json({ success: false, message: 'Username must be 3-20 characters', field: 'username'});
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    return res.status(400).json({ success: false, message: 'Username can only contain letters, numbers, and underscores', field: 'username'});
+  }
 
-        if (await User.findOne({ email: email })) {
-            return res.status(400).json({ success: false, message: 'Email already registered', field: 'email'});
-        }
-        if (await User.findOne({ username: username.toLowerCase() })) {
-            return res.status(400).json({ success: false, message: 'Username already taken', field: 'username'});
-        }
+  if (await User.findOne({ email: email })) {
+    return res.status(400).json({ success: false, message: 'Email already registered', field: 'email'});
+  }
+  if (await User.findOne({ username: username.toLowerCase() })) {
+    return res.status(400).json({ success: false, message: 'Username already taken', field: 'username'});
+  }
 
-        const hashedPassword = await bcrypt.hash(password, saltRounds);
-        const newUser = new User({ email, username, hashedPassword });
-        await newUser.save();
-        
-        res.status(201).json({ success: true, message: 'Registration successful! Please log in.', redirectTo: '/login'});
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const newUser = new User({ email, username, hashedPassword });
+    await newUser.save();
+    
+      res.status(201).json({ success: true, message: 'Registration successful! Please log in.', redirectTo: '/login'});
 
-    } catch (error) {
-        console.error("Error during registration:", error);
-        res.status(500).json({ success: false, message: 'An error occurred during registration. Please try again.' });
-    }
+  } catch (error) {
+    console.error("Error during registration:", error);
+    res.status(500).json({ success: false, message: 'An error occurred during registration. Please try again.' });
+  }
 });
 
 // Logout route
@@ -263,42 +274,42 @@ function generateUniqueId() {
 app.post('/api/groups/create', async (req, res) => {
     try {
         await connectToDatabase();
-        if (!req.session.user || !req.session.user.email) {
-            return res.status(401).json({ error: 'User not authenticated' });
-        }
+    if (!req.session.user || !req.session.user.email) {
+        return res.status(401).json({ error: 'User not authenticated' });
+    }
 
-        const { name } = req.body;
-        if (!name || name.trim() === '') {
-            return res.status(400).json({ error: 'Group name is required' });
-        }
+    const { name } = req.body;
+    if (!name || name.trim() === '') {
+        return res.status(400).json({ error: 'Group name is required' });
+    }
 
-        const adminEmail = req.session.user.email;
+    const adminEmail = req.session.user.email;
         const groupId = generateUniqueId();
         const joinCode = await generateJoinCode();
 
-        try {
-            const newGroup = new Group({
+    try {
+        const newGroup = new Group({
                 id: groupId,
-                name: name.trim(),
-                adminEmail: adminEmail,
-                joinCode: joinCode,
+        name: name.trim(),
+        adminEmail: adminEmail,
+        joinCode: joinCode,
                 members: [adminEmail]
-            });
+        });
 
             const savedGroup = await newGroup.save();
-            console.log(`Group created: ${savedGroup.name} (ID: ${savedGroup.id}), Code: ${savedGroup.joinCode} by ${adminEmail}`);
-            res.status(201).json({ 
+        console.log(`Group created: ${savedGroup.name} (ID: ${savedGroup.id}), Code: ${savedGroup.joinCode} by ${adminEmail}`);
+        res.status(201).json({ 
                 id: savedGroup.id,
-                name: savedGroup.name,
-                adminEmail: savedGroup.adminEmail,
-                joinCode: savedGroup.joinCode,
-                members: savedGroup.members
-            });
-        } catch (error) {
-            console.error('Error creating group:', error);
+            name: savedGroup.name,
+            adminEmail: savedGroup.adminEmail,
+            joinCode: savedGroup.joinCode,
+            members: savedGroup.members
+        });
+    } catch (error) {
+        console.error('Error creating group:', error);
             if (error.code === 11000) {
-                return res.status(400).json({ error: 'Failed to generate unique join code. Please try again.' });
-            }
+            return res.status(400).json({ error: 'Failed to generate unique join code. Please try again.' });
+        }
             res.status(500).json({ error: 'An error occurred while creating the group.' });
         }
     } catch (error) {
@@ -310,47 +321,47 @@ app.post('/api/groups/create', async (req, res) => {
 app.post('/api/groups/join', async (req, res) => {
     try {
         await connectToDatabase();
-        if (!req.session.user || !req.session.user.email) {
-            return res.status(401).json({ error: 'User not authenticated' });
+    if (!req.session.user || !req.session.user.email) {
+        return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const { joinCode } = req.body;
+    if (!joinCode || joinCode.trim() === '') {
+        return res.status(400).json({ error: 'Join code is required' });
+    }
+
+    const userEmail = req.session.user.email;
+    
+    try {
+        const targetGroup = await Group.findOne({ joinCode: joinCode.trim() });
+
+    if (!targetGroup) {
+        return res.status(404).json({ error: 'Group not found with this join code' });
+    }
+
+        if (targetGroup.archivedDueToUserDeletion) {
+            targetGroup.archivedDueToUserDeletion = false;
+            console.log(`Group "${targetGroup.name}" (ID: ${targetGroup._id}) was archived and is now restored by user ${userEmail} joining with code.`);
         }
 
-        const { joinCode } = req.body;
-        if (!joinCode || joinCode.trim() === '') {
-            return res.status(400).json({ error: 'Join code is required' });
-        }
+    if (targetGroup.members.includes(userEmail)) {
+             await targetGroup.save(); 
+        return res.status(400).json({ error: 'User is already a member of this group', group: targetGroup });
+    }
 
-        const userEmail = req.session.user.email;
-        
-        try {
-            const targetGroup = await Group.findOne({ joinCode: joinCode.trim() });
-
-            if (!targetGroup) {
-                return res.status(404).json({ error: 'Group not found with this join code' });
-            }
-
-            if (targetGroup.archivedDueToUserDeletion) {
-                targetGroup.archivedDueToUserDeletion = false;
-                console.log(`Group "${targetGroup.name}" (ID: ${targetGroup._id}) was archived and is now restored by user ${userEmail} joining with code.`);
-            }
-
-            if (targetGroup.members.includes(userEmail)) {
-                await targetGroup.save(); 
-                return res.status(400).json({ error: 'User is already a member of this group', group: targetGroup });
-            }
-
-            targetGroup.members.push(userEmail);
+    targetGroup.members.push(userEmail);
             await targetGroup.save();
 
-            console.log(`User ${userEmail} joined group: ${targetGroup.name} (ID: ${targetGroup._id})`);
-            res.status(200).json({
+        console.log(`User ${userEmail} joined group: ${targetGroup.name} (ID: ${targetGroup._id})`);
+        res.status(200).json({
                 id: targetGroup._id,
-                name: targetGroup.name,
-                adminEmail: targetGroup.adminEmail,
-                joinCode: targetGroup.joinCode,
-                members: targetGroup.members
-            });
-        } catch (error) {
-            console.error('Error joining group:', error);
+            name: targetGroup.name,
+            adminEmail: targetGroup.adminEmail,
+            joinCode: targetGroup.joinCode,
+            members: targetGroup.members
+        });
+    } catch (error) {
+        console.error('Error joining group:', error);
             res.status(500).json({ error: 'An error occurred while joining the group.' });
         }
     } catch (error) {
@@ -362,21 +373,21 @@ app.post('/api/groups/join', async (req, res) => {
 app.get('/api/user/groups', async (req, res) => {
     try {
         await connectToDatabase();
-        if (!req.session.user || !req.session.user.email) {
-            return res.status(401).json({ error: 'User not authenticated' });
-        }
-        const userEmail = req.session.user.email;
-        
-        try {
-            const memberOfGroups = await Group.find({
-                members: userEmail,
+    if (!req.session.user || !req.session.user.email) {
+        return res.status(401).json({ error: 'User not authenticated' });
+    }
+    const userEmail = req.session.user.email;
+    
+    try {
+        const memberOfGroups = await Group.find({
+            members: userEmail,
                 archivedDueToUserDeletion: { $ne: true }
-            });
-            
-            res.status(200).json(memberOfGroups);
+        });
+        
+    res.status(200).json(memberOfGroups);
 
-        } catch (error) {
-            console.error('Error fetching user groups:', error);
+    } catch (error) {
+        console.error('Error fetching user groups:', error);
             res.status(500).json({ error: 'An error occurred while fetching your groups.' });
         }
     } catch (error) {
@@ -388,17 +399,17 @@ app.get('/api/user/groups', async (req, res) => {
 app.delete('/api/groups/:groupId', async (req, res) => {
     try {
         await connectToDatabase();
-        if (!req.session.user || !req.session.user.email) {
-            return res.status(401).json({ error: 'User not authenticated' });
-        }
+    if (!req.session.user || !req.session.user.email) {
+        return res.status(401).json({ error: 'User not authenticated' });
+    }
 
-        const { groupId } = req.params;
+    const { groupId } = req.params;
         const userEmail = req.session.user.email;
-
+    
         const group = await Group.findOne({ id: groupId });
-        if (!group) {
-            return res.status(404).json({ error: 'Group not found' });
-        }
+    if (!group) {
+        return res.status(404).json({ error: 'Group not found' });
+    }
 
         if (group.adminEmail !== userEmail) {
             return res.status(403).json({ error: 'Only the group admin can delete the group' });
@@ -417,13 +428,13 @@ app.delete('/api/groups/:groupId', async (req, res) => {
 app.post('/api/groups/:groupId/leave', async (req, res) => {
     try {
         await connectToDatabase();
-        if (!req.session.user || !req.session.user.email) {
-            return res.status(401).json({ error: 'User not authenticated' });
-        }
+    if (!req.session.user || !req.session.user.email) {
+        return res.status(401).json({ error: 'User not authenticated' });
+    }
 
-        const { groupId } = req.params;
+    const { groupId } = req.params;
         const userEmail = req.session.user.email;
-
+    
         const group = await Group.findOne({ id: groupId });
         if (!group) {
             return res.status(404).json({ error: 'Group not found' });
@@ -455,14 +466,14 @@ app.get('/chat', async (req, res) => {
         await connectToDatabase();
         const { groupId, groupName } = req.query;
 
-        if (!req.session.user || !req.session.user.email) {
+    if (!req.session.user || !req.session.user.email) {
             return res.redirect('/login');
-        }
+    }
 
         if (!groupId) {
             return res.redirect('/groups?error=No+group+selected');
         }
-
+    
         const group = await Group.findOne({ id: groupId });
 
         if (!group) {
@@ -475,7 +486,7 @@ app.get('/chat', async (req, res) => {
 
         req.session.currentGroup = { id: groupId, name: groupName || group.name };
         req.session.save((err) => {
-            if (err) {
+        if (err) {
                 console.error('Error saving session:', err);
                 return res.status(500).send('Error preparing chat session.');
             }
