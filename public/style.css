@@ -1081,6 +1081,14 @@ body.has-fixed-logo {
     box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
 }
 
+/* Move help button for mobile screens to avoid overlap with emoji button */
+@media (max-width: 768px) {
+    .help-button {
+        bottom: 80px;
+        right: 20px;
+    }
+}
+
 .help-modal {
     display: none;
     position: fixed;

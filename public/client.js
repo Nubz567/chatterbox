@@ -27,7 +27,7 @@ function debugLog(message, data = null) {
 
 window.addEventListener('load', () => {
     debugLog('Chat page loaded, initializing...');
-    
+
     const messagesList = document.getElementById('messages');
     const messageForm = document.getElementById('message-form');
     const messageInput = document.getElementById('message-input');
@@ -185,7 +185,7 @@ window.addEventListener('load', () => {
                     const result = await response.json();
                     debugLog('Message sent successfully:', result);
                     return result.message;
-                } else {
+        } else {
                     debugLog(`ERROR: Failed to send message - Status: ${response.status}`);
                     if (attempt === MAX_RETRIES) {
                         debugLog('ERROR: Max retries reached for message send');
@@ -197,7 +197,7 @@ window.addEventListener('load', () => {
                 debugLog(`ERROR sending message (attempt ${attempt}): ${error.message}`);
                 if (attempt === MAX_RETRIES) {
                     debugLog('ERROR: Max retries reached for message send');
-                    return null;
+            return null;
                 }
                 await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
             }
@@ -288,36 +288,36 @@ window.addEventListener('load', () => {
     // Display message
     function displayMessage(messageData) {
         try {
-            if (!messagesList) {
+        if (!messagesList) {
                 debugLog('ERROR: messagesList element not found');
-                return;
-            }
+            return;
+        }
 
             debugLog(`Displaying message: ${messageData.user}: ${messageData.text.substring(0, 30)}...`);
-
-            const item = document.createElement('li');
+        
+        const item = document.createElement('li');
             const date = new Date(messageData.timestamp);
-            const hours = date.getHours().toString().padStart(2, '0');
-            const minutes = date.getMinutes().toString().padStart(2, '0');
-            const formattedTime = `[${hours}:${minutes}]`;
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        const formattedTime = `[${hours}:${minutes}]`;
 
-            const timeSpan = document.createElement('span');
-            timeSpan.className = 'timestamp';
-            timeSpan.textContent = `${formattedTime} `;
-            item.appendChild(timeSpan);
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'timestamp';
+        timeSpan.textContent = `${formattedTime} `;
+        item.appendChild(timeSpan);
 
-            const messageContentSpan = document.createElement('span');
+        const messageContentSpan = document.createElement('span');
             messageContentSpan.innerHTML = `${escapeHTML(messageData.user)}: ${escapeHTML(messageData.text)}`;
-            item.appendChild(messageContentSpan);
+        item.appendChild(messageContentSpan);
 
             if (currentUserEmail && messageData.email === currentUserEmail) {
-                item.classList.add('my-message');
-            } else {
-                item.classList.add('other-message');
-            }
-
-            messagesList.appendChild(item);
-            messagesList.scrollTop = messagesList.scrollHeight;
+            item.classList.add('my-message');
+        } else {
+            item.classList.add('other-message');
+        }
+        
+        messagesList.appendChild(item);
+        messagesList.scrollTop = messagesList.scrollHeight;
             debugLog('Message displayed successfully');
         } catch (error) {
             debugLog(`ERROR displaying message: ${error.message}`);
@@ -329,9 +329,9 @@ window.addEventListener('load', () => {
         try {
             if (!userList || !userListLoading) {
                 debugLog('ERROR: userList or userListLoading element not found');
-                return;
-            }
-
+            return;
+        }
+    
             debugLog(`Displaying ${users.length} users`);
 
             // Hide loading indicator and show user list
@@ -468,7 +468,7 @@ window.addEventListener('load', () => {
                 debugLog('Message sent and received confirmation');
                 // Display the sent message immediately
                 displayMessage(sentMessage);
-            } else {
+        } else {
                 debugLog('ERROR: Failed to send message');
                 // Restore the message to input for retry
                 messageInput.value = message;

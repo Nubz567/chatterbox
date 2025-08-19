@@ -466,14 +466,14 @@ app.get('/chat', async (req, res) => {
         await connectToDatabase();
         const { groupId, groupName } = req.query;
 
-        if (!req.session.user || !req.session.user.email) {
+    if (!req.session.user || !req.session.user.email) {
             return res.redirect('/login');
-        }
+    }
 
         if (!groupId) {
             return res.redirect('/groups?error=No+group+selected');
         }
-
+    
         const group = await Group.findOne({ id: groupId });
 
         if (!group) {
