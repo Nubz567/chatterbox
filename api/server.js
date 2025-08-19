@@ -506,19 +506,36 @@ const MAX_MESSAGES = 100;
 // API endpoint to send a message
 app.post('/api/chat/send', async (req, res) => {
     try {
+        console.log('=== CHAT SEND REQUEST ===');
+        console.log('Session:', req.session);
+        console.log('Body:', req.body);
+        console.log('User in session:', req.session.user);
+        
         if (!req.session.user || !req.session.user.email) {
+            console.log('ERROR: User not authenticated');
             return res.status(401).json({ error: 'Not authenticated' });
         }
 
         const { message, groupId } = req.body;
+        console.log('Message data:', { message: message?.substring(0, 50), groupId });
         
         if (!message || !groupId) {
+            console.log('ERROR: Missing required fields');
             return res.status(400).json({ error: 'Message and groupId are required' });
         }
 
         // Verify user is member of the group
+        console.log('Looking up group:', groupId);
         const group = await Group.findOne({ id: groupId });
+        console.log('Group found:', !!group);
+        if (group) {
+            console.log('Group members:', group.members);
+            console.log('User email:', req.session.user.email);
+            console.log('User is member:', group.members.includes(req.session.user.email));
+        }
+        
         if (!group || !group.members.includes(req.session.user.email)) {
+            console.log('ERROR: Not a member of this group');
             return res.status(403).json({ error: 'Not a member of this group' });
         }
 
@@ -531,20 +548,26 @@ app.post('/api/chat/send', async (req, res) => {
             groupId: groupId
         };
 
+        console.log('Message data created:', messageData);
+
         if (!groupMessages[groupId]) {
             groupMessages[groupId] = [];
+            console.log('Created new message array for group:', groupId);
         }
 
         groupMessages[groupId].push(messageData);
+        console.log('Message stored. Total messages in group:', groupMessages[groupId].length);
 
         // Keep only the last MAX_MESSAGES messages
         if (groupMessages[groupId].length > MAX_MESSAGES) {
             groupMessages[groupId] = groupMessages[groupId].slice(-MAX_MESSAGES);
+            console.log('Trimmed messages to MAX_MESSAGES');
         }
 
+        console.log('Sending response:', { success: true, message: messageData });
         res.json({ success: true, message: messageData });
     } catch (error) {
-        console.error('Error sending message:', error);
+        console.error('ERROR sending message:', error);
         res.status(500).json({ error: 'Failed to send message' });
     }
 });
@@ -552,22 +575,41 @@ app.post('/api/chat/send', async (req, res) => {
 // API endpoint to get messages
 app.get('/api/chat/messages/:groupId', async (req, res) => {
     try {
+        console.log('=== GET MESSAGES REQUEST ===');
+        console.log('Session:', req.session);
+        console.log('Params:', req.params);
+        console.log('User in session:', req.session.user);
+        
         if (!req.session.user || !req.session.user.email) {
+            console.log('ERROR: User not authenticated');
             return res.status(401).json({ error: 'Not authenticated' });
         }
 
         const { groupId } = req.params;
+        console.log('Requested groupId:', groupId);
 
         // Verify user is member of the group
+        console.log('Looking up group:', groupId);
         const group = await Group.findOne({ id: groupId });
+        console.log('Group found:', !!group);
+        if (group) {
+            console.log('Group members:', group.members);
+            console.log('User email:', req.session.user.email);
+            console.log('User is member:', group.members.includes(req.session.user.email));
+        }
+        
         if (!group || !group.members.includes(req.session.user.email)) {
+            console.log('ERROR: Not a member of this group');
             return res.status(403).json({ error: 'Not a member of this group' });
         }
 
         const messages = groupMessages[groupId] || [];
+        console.log(`Returning ${messages.length} messages for group ${groupId}`);
+        console.log('Messages:', messages.map(m => ({ id: m.id, user: m.user, text: m.text?.substring(0, 30) })));
+        
         res.json({ messages });
     } catch (error) {
-        console.error('Error getting messages:', error);
+        console.error('ERROR getting messages:', error);
         res.status(500).json({ error: 'Failed to get messages' });
     }
 });
