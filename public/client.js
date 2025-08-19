@@ -8,22 +8,12 @@ let userPollInterval = null;
 let retryCount = 0;
 const MAX_RETRIES = 3;
 
-// Debug logging function
-function debugLog(message, data = null) {
-    const timestamp = new Date().toISOString();
-    const logMessage = `[${timestamp}] ${message}`;
-    console.log(logMessage, data || '');
-    
-    // Also log to a visible debug area if it exists
-    const debugArea = document.getElementById('debug-area');
-    if (debugArea) {
-        const debugEntry = document.createElement('div');
-        debugEntry.style.cssText = 'font-size: 12px; color: #666; margin: 2px 0;';
-        debugEntry.textContent = logMessage;
-        debugArea.appendChild(debugEntry);
-        debugArea.scrollTop = debugArea.scrollHeight;
+    // Debug logging function
+    function debugLog(message, data = null) {
+        const timestamp = new Date().toISOString();
+        const logMessage = `[${timestamp}] ${message}`;
+        console.log(logMessage, data || '');
     }
-}
 
 window.addEventListener('load', () => {
     debugLog('Chat page loaded, initializing...');
@@ -39,8 +29,6 @@ window.addEventListener('load', () => {
     const emojiPanel = document.getElementById('emoji-panel');
     const groupChatTitle = document.querySelector('#group-chat-area .chat-title-bar');
     const usernameDisplay = document.getElementById('username-display');
-    const debugArea = document.getElementById('debug-area');
-    const debugToggle = document.getElementById('debug-toggle');
     const userListLoading = document.getElementById('user-list-loading');
 
     // Check if all required elements exist
@@ -484,15 +472,7 @@ window.addEventListener('load', () => {
         });
     }
 
-    // Handle debug toggle
-    if (debugToggle && debugArea) {
-        debugToggle.addEventListener('click', () => {
-            const isVisible = debugArea.style.display !== 'none';
-            debugArea.style.display = isVisible ? 'none' : 'block';
-            debugToggle.textContent = isVisible ? 'Show Debug' : 'Hide Debug';
-            debugLog(`Debug area ${isVisible ? 'hidden' : 'shown'}`);
-        });
-    }
+
 
     // Handle logout
     const logoutForm = document.querySelector('#logout-form');
