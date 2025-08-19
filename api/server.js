@@ -57,6 +57,15 @@ const groupSchema = new mongoose.Schema({
 });
 const Group = mongoose.model('Group', groupSchema);
 
+const messageSchema = new mongoose.Schema({
+    groupId: { type: String, required: true },
+    user: { type: String, required: true },
+    email: { type: String, required: true },
+    text: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now }
+});
+const Message = mongoose.model('Message', messageSchema);
+
 // Session configuration with MongoDB store
 const sessionMiddleware = session({
     secret: process.env.SESSION_SECRET || 'default-secret',
@@ -498,9 +507,6 @@ app.get('/chat', async (req, res) => {
     }
 });
 
-// Simple in-memory message storage (for demo purposes)
-// In production, you'd want to use a database
-const groupMessages = {};
 const MAX_MESSAGES = 100;
 
 // API endpoint to send a message
@@ -550,18 +556,29 @@ app.post('/api/chat/send', async (req, res) => {
 
         console.log('Message data created:', messageData);
 
-        if (!groupMessages[groupId]) {
-            groupMessages[groupId] = [];
-            console.log('Created new message array for group:', groupId);
-        }
+        // Save message to database
+        const newMessage = new Message({
+            groupId: groupId,
+            user: req.session.user.username,
+            email: req.session.user.email,
+            text: message,
+            timestamp: new Date()
+        });
 
-        groupMessages[groupId].push(messageData);
-        console.log('Message stored. Total messages in group:', groupMessages[groupId].length);
+        await newMessage.save();
+        console.log('Message saved to database');
 
-        // Keep only the last MAX_MESSAGES messages
-        if (groupMessages[groupId].length > MAX_MESSAGES) {
-            groupMessages[groupId] = groupMessages[groupId].slice(-MAX_MESSAGES);
-            console.log('Trimmed messages to MAX_MESSAGES');
+        // Keep only the last MAX_MESSAGES messages by deleting older ones
+        const messageCount = await Message.countDocuments({ groupId: groupId });
+        if (messageCount > MAX_MESSAGES) {
+            const messagesToDelete = await Message.find({ groupId: groupId })
+                .sort({ timestamp: 1 })
+                .limit(messageCount - MAX_MESSAGES);
+            
+            if (messagesToDelete.length > 0) {
+                await Message.deleteMany({ _id: { $in: messagesToDelete.map(m => m._id) } });
+                console.log(`Deleted ${messagesToDelete.length} old messages`);
+            }
         }
 
         console.log('Sending response:', { success: true, message: messageData });
@@ -603,9 +620,13 @@ app.get('/api/chat/messages/:groupId', async (req, res) => {
             return res.status(403).json({ error: 'Not a member of this group' });
         }
 
-        const messages = groupMessages[groupId] || [];
+        // Fetch messages from database
+        const messages = await Message.find({ groupId: groupId })
+            .sort({ timestamp: 1 })
+            .limit(MAX_MESSAGES);
+        
         console.log(`Returning ${messages.length} messages for group ${groupId}`);
-        console.log('Messages:', messages.map(m => ({ id: m.id, user: m.user, text: m.text?.substring(0, 30) })));
+        console.log('Messages:', messages.map(m => ({ id: m._id, user: m.user, text: m.text?.substring(0, 30) })));
         
         res.json({ messages });
     } catch (error) {
