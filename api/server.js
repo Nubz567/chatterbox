@@ -352,9 +352,9 @@ app.post('/api/groups/join', async (req, res) => {
     targetGroup.members.push(userEmail);
             await targetGroup.save();
 
-        console.log(`User ${userEmail} joined group: ${targetGroup.name} (ID: ${targetGroup._id})`);
+        console.log(`User ${userEmail} joined group: ${targetGroup.name} (ID: ${targetGroup.id})`);
         res.status(200).json({
-                id: targetGroup._id,
+                id: targetGroup.id,
             name: targetGroup.name,
             adminEmail: targetGroup.adminEmail,
             joinCode: targetGroup.joinCode,
@@ -624,19 +624,37 @@ app.get('/api/chat/users/:groupId', async (req, res) => {
         const { groupId } = req.params;
 
         // Verify user is member of the group
+        console.log('Looking up group for users:', groupId);
         const group = await Group.findOne({ id: groupId });
+        console.log('Group found for users:', !!group);
+        if (group) {
+            console.log('Group members for users:', group.members);
+            console.log('User email for users:', req.session.user.email);
+            console.log('User is member for users:', group.members.includes(req.session.user.email));
+        }
+        
         if (!group || !group.members.includes(req.session.user.email)) {
+            console.log('ERROR: Not a member of this group (users)');
             return res.status(403).json({ error: 'Not a member of this group' });
         }
 
         // For now, return all group members as "online"
         // In a real app, you'd track actual online status
-        const users = group.members.map(email => ({
-            email: email,
-            username: email.split('@')[0], // Simple username extraction
-            online: true
-        }));
+        console.log('Getting user details for members:', group.members);
+        
+        const userDetails = await User.find({ email: { $in: group.members } });
+        console.log('Found user details:', userDetails.map(u => ({ email: u.email, username: u.username })));
+        
+        const users = group.members.map(email => {
+            const userDetail = userDetails.find(u => u.email === email);
+            return {
+                email: email,
+                username: userDetail ? userDetail.username : email.split('@')[0], // Fallback to email prefix
+                online: true
+            };
+        });
 
+        console.log('Returning users:', users);
         res.json({ users });
     } catch (error) {
         console.error('Error getting users:', error);
