@@ -97,9 +97,9 @@ window.addEventListener('load', function() {
                 <div class="update-section">
                     <h3>Coming Soon</h3>
                     <ul>
-                        <li>Call function</li>
+                        <li>Parental Controls</li>
                         <li>Even more EMOJIS</li>
-                        <li>Avatar button</li>
+                        <li>School Groups</li>
                         <li>Sending Pictures and videos</li>
                         <li>Voice messages</li>
                         <li>And more!</li>
