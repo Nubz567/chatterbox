@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chatterbox</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body class="has-fixed-logo">
     <div class="site-logo">
@@ -28,17 +34,24 @@
         </button>
         
         <div id="sidebar">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom:10px;">
-                <h2>Online Users</h2>
-                <div style="display: flex; gap: 10px;">
-                    <button type="button" class="options-button">💬 Chat Options</button>
-                    <form action="/logout" method="POST" id="logout-form">
-                        <button type="submit">Logout</button>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 10px 0;">
+                <h2 style="margin: 0; color: #fff; font-size: 18px;">Online Users</h2>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" class="options-button" style="background: #3498db; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 4px;">
+                        <span style="font-size: 14px;">💬</span>
+                        <span>Chat Options</span>
+                    </button>
+                    <form action="/logout" method="POST" id="logout-form" style="margin: 0;">
+                        <button type="submit" style="background: #e74c3c; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">Logout</button>
                     </form>
                 </div>
             </div>
             <div id="user-list-container">
-                <ul id="user-list">
+                <div id="user-list-loading" style="text-align: center; padding: 20px; color: #888; font-style: italic;">
+                    <div style="margin-bottom: 10px;">Loading users...</div>
+                    <div style="width: 20px; height: 20px; border: 2px solid #3498db; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                </div>
+                <ul id="user-list" style="display: none;">
                     <!-- "Group Chat" and user items will be populated here by client.js -->
                 </ul>
             </div>

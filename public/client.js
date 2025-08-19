@@ -41,6 +41,7 @@ window.addEventListener('load', () => {
     const usernameDisplay = document.getElementById('username-display');
     const debugArea = document.getElementById('debug-area');
     const debugToggle = document.getElementById('debug-toggle');
+    const userListLoading = document.getElementById('user-list-loading');
 
     // Check if all required elements exist
     const requiredElements = {
@@ -50,7 +51,8 @@ window.addEventListener('load', () => {
         userList,
         emojiButton,
         emojiPanel,
-        usernameDisplay
+        usernameDisplay,
+        userListLoading
     };
 
     const missingElements = Object.entries(requiredElements)
@@ -239,18 +241,25 @@ window.addEventListener('load', () => {
         }
     }
 
-    // Fetch users with retry logic
+    // Fetch users with retry logic and timeout
     async function fetchUsers() {
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
                 debugLog(`Fetching users (attempt ${attempt}/${MAX_RETRIES})...`);
                 
+                // Add timeout to prevent hanging requests
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+                
                 const response = await fetch(`/api/chat/users/${currentGroupId}`, {
                     credentials: 'include',
                     headers: {
                         'Cache-Control': 'no-cache'
-                    }
+                    },
+                    signal: controller.signal
                 });
+
+                clearTimeout(timeoutId);
 
                 if (response.ok) {
                     const data = await response.json();
@@ -318,12 +327,16 @@ window.addEventListener('load', () => {
     // Display user list
     function displayUsers(users) {
         try {
-            if (!userList) {
-                debugLog('ERROR: userList element not found');
+            if (!userList || !userListLoading) {
+                debugLog('ERROR: userList or userListLoading element not found');
                 return;
             }
 
             debugLog(`Displaying ${users.length} users`);
+
+            // Hide loading indicator and show user list
+            userListLoading.style.display = 'none';
+            userList.style.display = 'block';
 
             userList.innerHTML = '';
             
@@ -347,6 +360,8 @@ window.addEventListener('load', () => {
             debugLog('User list displayed successfully');
         } catch (error) {
             debugLog(`ERROR displaying users: ${error.message}`);
+            // Show error state
+            userListLoading.innerHTML = '<div style="text-align: center; padding: 20px; color: #e74c3c;">Failed to load users</div>';
         }
     }
 
@@ -401,17 +416,17 @@ window.addEventListener('load', () => {
     function startPolling() {
         debugLog('Starting polling...');
         
-        // Poll messages every 2 seconds
+        // Poll messages every 3 seconds (reduced frequency)
         messagePollInterval = setInterval(async () => {
             await pollMessages();
-        }, 2000);
+        }, 3000);
 
-        // Poll users every 10 seconds
+        // Poll users every 15 seconds (reduced frequency to reduce load)
         userPollInterval = setInterval(async () => {
             await pollUsers();
-        }, 10000);
+        }, 15000);
         
-        debugLog('Polling started - Messages: 2s, Users: 10s');
+        debugLog('Polling started - Messages: 3s, Users: 15s');
     }
 
     // Stop polling

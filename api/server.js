@@ -642,7 +642,8 @@ app.get('/api/chat/users/:groupId', async (req, res) => {
         // In a real app, you'd track actual online status
         console.log('Getting user details for members:', group.members);
         
-        const userDetails = await User.find({ email: { $in: group.members } });
+        // Only fetch username and email fields to reduce data transfer
+        const userDetails = await User.find({ email: { $in: group.members } }, 'email username');
         console.log('Found user details:', userDetails.map(u => ({ email: u.email, username: u.username })));
         
         const users = group.members.map(email => {
