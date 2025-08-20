@@ -139,7 +139,7 @@ window.addEventListener('load', () => {
                         debugLog('ERROR: Max retries reached for user info fetch');
                         return null;
                     }
-                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                    await new Promise(resolve => setTimeout(resolve, 500 * attempt));
                 }
             } catch (error) {
                 debugLog(`ERROR fetching user info (attempt ${attempt}): ${error.message}`);
@@ -147,7 +147,7 @@ window.addEventListener('load', () => {
                     debugLog('ERROR: Max retries reached for user info fetch');
                     return null;
                 }
-                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                await new Promise(resolve => setTimeout(resolve, 500 * attempt));
             }
         }
     }
@@ -181,15 +181,15 @@ window.addEventListener('load', () => {
                         debugLog('ERROR: Max retries reached for message send');
                         return null;
                     }
-                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                    await new Promise(resolve => setTimeout(resolve, 500 * attempt));
                 }
             } catch (error) {
                 debugLog(`ERROR sending message (attempt ${attempt}): ${error.message}`);
-                if (attempt === MAX_RETRIES) {
+                                if (attempt === MAX_RETRIES) {
                     debugLog('ERROR: Max retries reached for message send');
-            return null;
+                    return null;
                 }
-                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                await new Promise(resolve => setTimeout(resolve, 500 * attempt));
             }
         }
     }
@@ -200,12 +200,19 @@ window.addEventListener('load', () => {
             try {
                 debugLog(`Fetching messages (attempt ${attempt}/${MAX_RETRIES})...`);
                 
+                // Add timeout to prevent hanging requests
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+                
                 const response = await fetch(`/api/chat/messages/${currentGroupId}`, {
                     credentials: 'include',
                     headers: {
                         'Cache-Control': 'no-cache'
-                    }
+                    },
+                    signal: controller.signal
                 });
+
+                clearTimeout(timeoutId);
 
                 if (response.ok) {
                     const data = await response.json();
@@ -218,7 +225,7 @@ window.addEventListener('load', () => {
                         debugLog('ERROR: Max retries reached for messages fetch');
                         return [];
                     }
-                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                    await new Promise(resolve => setTimeout(resolve, 500 * attempt));
                 }
             } catch (error) {
                 debugLog(`ERROR fetching messages (attempt ${attempt}): ${error.message}`);
@@ -226,7 +233,7 @@ window.addEventListener('load', () => {
                     debugLog('ERROR: Max retries reached for messages fetch');
                     return [];
                 }
-                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                await new Promise(resolve => setTimeout(resolve, 500 * attempt));
             }
         }
     }
@@ -239,7 +246,7 @@ window.addEventListener('load', () => {
                 
                 // Add timeout to prevent hanging requests
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+                const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
                 
                 const response = await fetch(`/api/chat/users/${currentGroupId}`, {
                     credentials: 'include',
@@ -262,7 +269,7 @@ window.addEventListener('load', () => {
                         debugLog('ERROR: Max retries reached for users fetch');
                         return [];
                     }
-                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                    await new Promise(resolve => setTimeout(resolve, 500 * attempt));
                 }
             } catch (error) {
                 debugLog(`ERROR fetching users (attempt ${attempt}): ${error.message}`);
@@ -270,7 +277,7 @@ window.addEventListener('load', () => {
                     debugLog('ERROR: Max retries reached for users fetch');
                     return [];
                 }
-                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                await new Promise(resolve => setTimeout(resolve, 500 * attempt));
             }
         }
     }
@@ -420,17 +427,17 @@ window.addEventListener('load', () => {
     function startPolling() {
         debugLog('Starting polling...');
         
-        // Poll messages every 3 seconds (reduced frequency)
+        // Poll messages every 1.5 seconds (faster for better responsiveness)
         messagePollInterval = setInterval(async () => {
             await pollMessages();
-        }, 3000);
+        }, 1500);
 
-        // Poll users every 15 seconds (reduced frequency to reduce load)
+        // Poll users every 10 seconds (faster for better user list updates)
         userPollInterval = setInterval(async () => {
             await pollUsers();
-        }, 15000);
+        }, 10000);
         
-        debugLog('Polling started - Messages: 3s, Users: 15s');
+        debugLog('Polling started - Messages: 1.5s, Users: 10s');
     }
 
     // Stop polling

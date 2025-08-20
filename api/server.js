@@ -64,6 +64,11 @@ const messageSchema = new mongoose.Schema({
     text: { type: String, required: true },
     timestamp: { type: Date, default: Date.now }
 });
+ 
+// Add indexes for better query performance
+messageSchema.index({ groupId: 1, timestamp: 1 });
+messageSchema.index({ groupId: 1 });
+
 const Message = mongoose.model('Message', messageSchema);
 
 // Session configuration with MongoDB store
@@ -637,11 +642,13 @@ app.get('/api/chat/messages/:groupId', async (req, res) => {
             return res.status(403).json({ error: 'Not a member of this group' });
         }
 
-        // Fetch messages from database
+        // Fetch messages from database with optimized query
         console.log('Fetching messages from database for groupId:', groupId);
         const messages = await Message.find({ groupId: groupId })
+            .select('_id user email text timestamp groupId')
             .sort({ timestamp: 1 })
-            .limit(MAX_MESSAGES);
+            .limit(MAX_MESSAGES)
+            .lean();
         
         console.log(`Found ${messages.length} messages in database for group ${groupId}`);
         
@@ -699,7 +706,7 @@ app.get('/api/chat/users/:groupId', async (req, res) => {
         console.log('Getting user details for members:', group.members);
         
         // Only fetch username and email fields to reduce data transfer
-        const userDetails = await User.find({ email: { $in: group.members } }, 'email username');
+        const userDetails = await User.find({ email: { $in: group.members } }, 'email username').lean();
         console.log('Found user details:', userDetails.map(u => ({ email: u.email, username: u.username })));
         
         const users = group.members.map(email => {
