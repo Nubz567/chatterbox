@@ -51,9 +51,6 @@
                     <!-- "Group Chat" and user items will be populated here by client.js -->
                 </ul>
             </div>
-            <div id="emoji-panel" class="emoji-panel hidden">
-                <!-- Emojis will be populated here by client.js -->
-            </div>
         </div>
 
         <div id="main-content-area" style="margin-top: 60px;">
@@ -68,6 +65,12 @@
                 
                 <ul id="messages" class="messages" style="display: none;"></ul>
                 <div id="typing-indicator"></div>
+                
+                <!-- Emoji panel moved to main chat area -->
+                <div id="emoji-panel" class="emoji-panel hidden" style="background: white; border-top: 1px solid rgba(0,0,0,0.1); padding: 10px; max-height: 200px; overflow-y: auto;">
+                    <!-- Emojis will be populated here by client.js -->
+                </div>
+                
                 <form id="message-form">
                     <input id="message-input" autocomplete="off" placeholder="Type a message..." /><button type="submit">Send</button>
                     <button type="button" id="emoji-button">😀</button>
