@@ -565,8 +565,15 @@ app.post('/api/chat/send', async (req, res) => {
             timestamp: new Date()
         });
 
+        console.log('Saving message to database:', {
+            groupId: groupId,
+            user: req.session.user.username,
+            email: req.session.user.email,
+            text: message.substring(0, 50)
+        });
+
         await newMessage.save();
-        console.log('Message saved to database');
+        console.log('Message saved to database with ID:', newMessage._id);
 
         // Keep only the last MAX_MESSAGES messages by deleting older ones
         const messageCount = await Message.countDocuments({ groupId: groupId });
@@ -581,8 +588,18 @@ app.post('/api/chat/send', async (req, res) => {
             }
         }
 
-        console.log('Sending response:', { success: true, message: messageData });
-        res.json({ success: true, message: messageData });
+        // Transform the saved message for client compatibility
+        const responseMessage = {
+            id: newMessage._id.toString(),
+            user: newMessage.user,
+            email: newMessage.email,
+            text: newMessage.text,
+            timestamp: newMessage.timestamp,
+            groupId: newMessage.groupId
+        };
+
+        console.log('Sending response:', { success: true, message: responseMessage });
+        res.json({ success: true, message: responseMessage });
     } catch (error) {
         console.error('ERROR sending message:', error);
         res.status(500).json({ error: 'Failed to send message' });
@@ -621,14 +638,32 @@ app.get('/api/chat/messages/:groupId', async (req, res) => {
         }
 
         // Fetch messages from database
+        console.log('Fetching messages from database for groupId:', groupId);
         const messages = await Message.find({ groupId: groupId })
             .sort({ timestamp: 1 })
             .limit(MAX_MESSAGES);
         
-        console.log(`Returning ${messages.length} messages for group ${groupId}`);
-        console.log('Messages:', messages.map(m => ({ id: m._id, user: m.user, text: m.text?.substring(0, 30) })));
+        console.log(`Found ${messages.length} messages in database for group ${groupId}`);
         
-        res.json({ messages });
+        // Transform messages to include 'id' field for client compatibility
+        const transformedMessages = messages.map(m => ({
+            id: m._id.toString(),
+            user: m.user,
+            email: m.email,
+            text: m.text,
+            timestamp: m.timestamp,
+            groupId: m.groupId
+        }));
+        
+        console.log('Transformed messages:', transformedMessages.map(m => ({ 
+            id: m.id, 
+            user: m.user, 
+            text: m.text?.substring(0, 30),
+            groupId: m.groupId,
+            timestamp: m.timestamp
+        })));
+        
+        res.json({ messages: transformedMessages });
     } catch (error) {
         console.error('ERROR getting messages:', error);
         res.status(500).json({ error: 'Failed to get messages' });
