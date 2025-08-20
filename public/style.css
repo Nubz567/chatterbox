@@ -331,7 +331,8 @@ body.has-fixed-logo {
     padding: 8px 12px;
     margin-bottom: 8px;
     border-radius: 10px;
-    max-width: 80%; /* Slightly more max-width */
+    width: fit-content;
+    max-width: 80%; /* Fallback for very long messages */
     word-wrap: break-word;
     line-height: 1.4;
 }

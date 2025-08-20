@@ -187,8 +187,8 @@ window.addEventListener('load', () => {
                 debugLog(`ERROR sending message (attempt ${attempt}): ${error.message}`);
                                 if (attempt === MAX_RETRIES) {
                     debugLog('ERROR: Max retries reached for message send');
-                    return null;
-                }
+            return null;
+        }
                 await new Promise(resolve => setTimeout(resolve, 500 * attempt));
             }
         }
