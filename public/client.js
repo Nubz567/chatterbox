@@ -30,6 +30,7 @@ window.addEventListener('load', () => {
     const groupChatTitle = document.querySelector('#group-chat-area .chat-title-bar');
     const usernameDisplay = document.getElementById('username-display');
     const userListLoading = document.getElementById('user-list-loading');
+    const messagesLoading = document.getElementById('messages-loading');
 
     // Check if all required elements exist
     const requiredElements = {
@@ -40,7 +41,8 @@ window.addEventListener('load', () => {
         emojiButton,
         emojiPanel,
         usernameDisplay,
-        userListLoading
+        userListLoading,
+        messagesLoading
     };
 
     const missingElements = Object.entries(requiredElements)
@@ -367,6 +369,10 @@ window.addEventListener('load', () => {
                     // Clear messages if this is the first load
                     if (lastMessageId === null) {
                         debugLog('First load - displaying all messages');
+                        // Hide loading indicator and show messages
+                        if (messagesLoading) messagesLoading.style.display = 'none';
+                        if (messagesList) messagesList.style.display = 'block';
+                        
                         messagesList.innerHTML = '';
                         messages.forEach(displayMessage);
                     } else {
@@ -384,9 +390,19 @@ window.addEventListener('load', () => {
                 }
             } else {
                 debugLog('No messages found');
+                // Hide loading indicator even if no messages
+                if (lastMessageId === null && messagesLoading) {
+                    messagesLoading.style.display = 'none';
+                    if (messagesList) messagesList.style.display = 'block';
+                }
             }
         } catch (error) {
             debugLog(`ERROR in pollMessages: ${error.message}`);
+            // Hide loading indicator on error
+            if (lastMessageId === null && messagesLoading) {
+                messagesLoading.style.display = 'none';
+                if (messagesList) messagesList.style.display = 'block';
+            }
         }
     }
 
