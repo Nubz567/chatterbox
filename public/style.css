@@ -26,14 +26,14 @@ body {
 }
 
 .site-logo img {
-    height: 240px; /* Increased from 80px (3x) */
+    height: 120px; /* Reduced from 240px to a more reasonable size */
     width: auto;  /* Maintain aspect ratio */
     display: block;
 }
 
 /* Adjust body padding on pages to prevent content from going under the logo */
 body.has-fixed-logo {
-    padding-top: 260px; /* Increased from 100px (240px logo + 20px margin) */
+    padding-top: 140px; /* Reduced from 260px (120px logo + 20px margin) */
     position: relative; /* Added to contain absolute positioned logo */
     min-height: 100vh;
 }
