@@ -316,8 +316,8 @@ app.post('/change-password', async (req, res) => {
             return res.status(400).json({ success: false, message: 'New passwords do not match' });
         }
 
-        if (newPassword.length < 6) {
-            return res.status(400).json({ success: false, message: 'New password must be at least 6 characters' });
+        if (newPassword.length < 4) {
+            return res.status(400).json({ success: false, message: 'New password must be at least 4 characters' });
         }
 
         // Verify current password
