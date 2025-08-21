@@ -138,10 +138,10 @@ app.get('/api/user', (req, res) => {
 
 // Change username endpoint
 app.post('/api/user/change-username', async (req, res) => {
-    try {
-        await connectToDatabase();
-        
-    if (!req.session.user || !req.session.user.email) {
+  try {
+    await connectToDatabase();
+
+  if (!req.session.user || !req.session.user.email) {
             return res.status(401).json({ success: false, message: 'User not authenticated' });
         }
 
@@ -187,7 +187,7 @@ app.post('/api/user/change-username', async (req, res) => {
             username: newUsername
         });
 
-    } catch (error) {
+  } catch (error) {
         console.error('Error changing username:', error);
         res.status(500).json({ success: false, message: 'Server error while changing username' });
     }
@@ -210,15 +210,15 @@ app.get('/login', (req, res) => {
     if (req.session.user && req.session.user.email) {
         console.log('User already logged in, redirecting to groups');
         res.redirect('/groups');
-            } else {
+    } else {
         console.log('No user session, showing login page');
         res.sendFile(path.join(__dirname, '../public', 'login.html'));
     }
 });
 
 app.post('/login', async (req, res) => {
-  try {
-    await connectToDatabase();
+    try {
+        await connectToDatabase();
   const { email, password } = req.body;
 
     if (!email || !password) {
@@ -240,7 +240,7 @@ app.post('/login', async (req, res) => {
         } else {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
-  } catch (error) {
+    } catch (error) {
         console.error('Login error:', error);
         return res.status(500).json({ success: false, message: 'Server error during login.' });
     }
@@ -252,8 +252,8 @@ app.get('/register', (req, res) => {
 });
 
 app.post('/register', async (req, res) => {
-  try {
-    await connectToDatabase();
+    try {
+        await connectToDatabase();
   const { email, username, password, confirmPassword } = req.body;
   const saltRounds = 10;
 
@@ -283,7 +283,7 @@ app.post('/register', async (req, res) => {
     
       res.status(201).json({ success: true, message: 'Registration successful! Please log in.', redirectTo: '/login'});
 
-  } catch (error) {
+    } catch (error) {
     console.error("Error during registration:", error);
     res.status(500).json({ success: false, message: 'An error occurred during registration. Please try again.' });
   }
@@ -302,7 +302,7 @@ app.post('/change-password', async (req, res) => {
     try {
         await connectToDatabase();
         
-        if (!req.session.user || !req.session.user.email) {
+    if (!req.session.user || !req.session.user.email) {
             return res.status(401).json({ success: false, message: 'User not authenticated' });
         }
 
@@ -343,10 +343,10 @@ app.post('/change-password', async (req, res) => {
         console.log(`Password changed for user ${req.session.user.email}`);
 
         res.json({ 
-            success: true, 
+        success: true, 
             message: 'Password changed successfully',
             redirectTo: '/groups'
-        });
+    });
 
     } catch (error) {
         console.error('Error changing password:', error);
@@ -364,8 +364,8 @@ app.get('/delete-account', (req, res) => {
 });
 
 app.post('/delete-account', async (req, res) => {
-    try {
-        await connectToDatabase();
+  try {
+    await connectToDatabase();
         
         if (!req.session.user || !req.session.user.email) {
             return res.status(401).json({ success: false, message: 'User not authenticated' });
@@ -383,7 +383,7 @@ app.post('/delete-account', async (req, res) => {
 
         // Verify password
         const user = await User.findOne({ email: req.session.user.email });
-        if (!user) {
+    if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }
 
@@ -413,29 +413,29 @@ app.post('/delete-account', async (req, res) => {
             });
         });
 
-    } catch (error) {
+  } catch (error) {
         console.error('Error deleting account:', error);
         res.status(500).json({ success: false, message: 'Server error while deleting account' });
-    }
+  }
 });
 
 // Logout route
 app.post('/logout', (req, res) => {
-    if (req.session.user) {
-        const userEmail = req.session.user.email;
-        req.session.destroy((err) => {
-            if (err) {
-                console.error('Session destruction error:', err);
-                res.status(500).json({ success: false, message: 'Logout failed, please clear your cookies.', redirectTo: '/login' });
-                return;
-            }
-            console.log(`User ${userEmail} logged out.`);
-            res.clearCookie('connect.sid');
-            res.status(200).json({ success: true, message: 'Logged out successfully', redirectTo: '/login' });
-        });
-    } else {
-        res.status(200).json({ success: true, message: 'No active session, already logged out', redirectTo: '/login' });
-    }
+  if (req.session.user) {
+    const userEmail = req.session.user.email;
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Session destruction error:', err);
+        res.status(500).json({ success: false, message: 'Logout failed, please clear your cookies.', redirectTo: '/login' });
+        return;
+      }
+      console.log(`User ${userEmail} logged out.`);
+      res.clearCookie('connect.sid');
+      res.status(200).json({ success: true, message: 'Logged out successfully', redirectTo: '/login' });
+    });
+  } else {
+    res.status(200).json({ success: true, message: 'No active session, already logged out', redirectTo: '/login' });
+  }
 });
 
 // Groups routes
