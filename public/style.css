@@ -255,6 +255,7 @@ body.has-fixed-logo {
 #sidebar {
     flex-basis: 250px; /* Give sidebar a fixed base width */
     flex-shrink: 0;
+    margin-top: 220px; /* Push sidebar down to avoid navigation bar overlap */
     /* user-list-container styles are mostly fine, ensure it's within sidebar */
 }
 
