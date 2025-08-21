@@ -495,6 +495,15 @@ window.addEventListener('load', () => {
         });
     }
 
+    // Handle back to groups button
+    const backToGroupsButton = document.getElementById('back-to-groups');
+    if (backToGroupsButton) {
+        backToGroupsButton.addEventListener('click', () => {
+            debugLog('Back to groups button clicked');
+            window.location.href = '/groups';
+        });
+    }
+
 
 
     // Handle logout
