@@ -306,13 +306,13 @@ app.post('/change-password', async (req, res) => {
             return res.status(401).json({ success: false, message: 'User not authenticated' });
         }
 
-        const { currentPassword, newPassword, confirmPassword } = req.body;
+        const { currentPassword, newPassword, confirmNewPassword } = req.body;
 
-        if (!currentPassword || !newPassword || !confirmPassword) {
+        if (!currentPassword || !newPassword || !confirmNewPassword) {
             return res.status(400).json({ success: false, message: 'All fields are required' });
         }
 
-        if (newPassword !== confirmPassword) {
+        if (newPassword !== confirmNewPassword) {
             return res.status(400).json({ success: false, message: 'New passwords do not match' });
         }
 
