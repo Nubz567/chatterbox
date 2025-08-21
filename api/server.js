@@ -136,6 +136,63 @@ app.get('/api/user', (req, res) => {
     });
 });
 
+// Change username endpoint
+app.post('/api/user/change-username', async (req, res) => {
+    try {
+        await connectToDatabase();
+        
+        if (!req.session.user || !req.session.user.email) {
+            return res.status(401).json({ success: false, message: 'User not authenticated' });
+        }
+
+        const { newUsername } = req.body;
+
+        if (!newUsername) {
+            return res.status(400).json({ success: false, message: 'New username is required' });
+        }
+
+        if (newUsername.length < 3 || newUsername.length > 20) {
+            return res.status(400).json({ success: false, message: 'Username must be 3-20 characters' });
+        }
+
+        if (!/^[a-zA-Z0-9_]+$/.test(newUsername)) {
+            return res.status(400).json({ success: false, message: 'Username can only contain letters, numbers, and underscores' });
+        }
+
+        // Check if username is already taken
+        const existingUser = await User.findOne({ username: newUsername.toLowerCase() });
+        if (existingUser && existingUser.email !== req.session.user.email) {
+            return res.status(400).json({ success: false, message: 'Username already taken' });
+        }
+
+        // Update the user's username
+        const updatedUser = await User.findOneAndUpdate(
+            { email: req.session.user.email },
+            { username: newUsername },
+            { new: true }
+        );
+
+        if (!updatedUser) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Update session with new username
+        req.session.user.username = newUsername;
+
+        console.log(`Username changed for user ${req.session.user.email} to ${newUsername}`);
+
+        res.json({ 
+            success: true, 
+            message: 'Username changed successfully',
+            username: newUsername
+        });
+
+    } catch (error) {
+        console.error('Error changing username:', error);
+        res.status(500).json({ success: false, message: 'Server error while changing username' });
+    }
+});
+
 // Simple test endpoint
 app.get('/test', (req, res) => {
     res.json({ 
