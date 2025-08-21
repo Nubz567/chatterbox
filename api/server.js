@@ -141,7 +141,7 @@ app.post('/api/user/change-username', async (req, res) => {
     try {
         await connectToDatabase();
         
-        if (!req.session.user || !req.session.user.email) {
+    if (!req.session.user || !req.session.user.email) {
             return res.status(401).json({ success: false, message: 'User not authenticated' });
         }
 
@@ -195,7 +195,7 @@ app.post('/api/user/change-username', async (req, res) => {
 
 // Simple test endpoint
 app.get('/test', (req, res) => {
-    res.json({ 
+        res.json({
         message: 'Server is working',
         timestamp: new Date().toISOString(),
         mongoURI: mongoURI ? 'configured' : 'not configured'
@@ -287,6 +287,136 @@ app.post('/register', async (req, res) => {
     console.error("Error during registration:", error);
     res.status(500).json({ success: false, message: 'An error occurred during registration. Please try again.' });
   }
+});
+
+// Change password routes
+app.get('/change-password', (req, res) => {
+    if (req.session.user && req.session.user.email) {
+        res.sendFile(path.join(__dirname, '../public', 'change-password.html'));
+    } else {
+        res.redirect('/login');
+    }
+});
+
+app.post('/change-password', async (req, res) => {
+    try {
+        await connectToDatabase();
+        
+        if (!req.session.user || !req.session.user.email) {
+            return res.status(401).json({ success: false, message: 'User not authenticated' });
+        }
+
+        const { currentPassword, newPassword, confirmPassword } = req.body;
+
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            return res.status(400).json({ success: false, message: 'All fields are required' });
+        }
+
+        if (newPassword !== confirmPassword) {
+            return res.status(400).json({ success: false, message: 'New passwords do not match' });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ success: false, message: 'New password must be at least 6 characters' });
+        }
+
+        // Verify current password
+        const user = await User.findOne({ email: req.session.user.email });
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        const currentPasswordValid = await bcrypt.compare(currentPassword, user.hashedPassword);
+        if (!currentPasswordValid) {
+            return res.status(401).json({ success: false, message: 'Current password is incorrect' });
+        }
+
+        // Hash and update new password
+        const saltRounds = 10;
+        const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+        
+        await User.findOneAndUpdate(
+            { email: req.session.user.email },
+            { hashedPassword: hashedNewPassword }
+        );
+
+        console.log(`Password changed for user ${req.session.user.email}`);
+
+        res.json({ 
+            success: true, 
+            message: 'Password changed successfully',
+            redirectTo: '/groups'
+        });
+
+    } catch (error) {
+        console.error('Error changing password:', error);
+        res.status(500).json({ success: false, message: 'Server error while changing password' });
+    }
+});
+
+// Delete account routes
+app.get('/delete-account', (req, res) => {
+    if (req.session.user && req.session.user.email) {
+        res.sendFile(path.join(__dirname, '../public', 'delete-account.html'));
+    } else {
+        res.redirect('/login');
+    }
+});
+
+app.post('/delete-account', async (req, res) => {
+    try {
+        await connectToDatabase();
+        
+        if (!req.session.user || !req.session.user.email) {
+            return res.status(401).json({ success: false, message: 'User not authenticated' });
+        }
+
+        const { password, confirmDelete } = req.body;
+
+        if (!password || !confirmDelete) {
+            return res.status(400).json({ success: false, message: 'Password and confirmation are required' });
+        }
+
+        if (confirmDelete !== 'DELETE') {
+            return res.status(400).json({ success: false, message: 'Please type DELETE to confirm account deletion' });
+        }
+
+        // Verify password
+        const user = await User.findOne({ email: req.session.user.email });
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        const passwordValid = await bcrypt.compare(password, user.hashedPassword);
+        if (!passwordValid) {
+            return res.status(401).json({ success: false, message: 'Password is incorrect' });
+        }
+
+        // Delete user's groups and messages
+        await Group.deleteMany({ creator: req.session.user.email });
+        await Message.deleteMany({ senderEmail: req.session.user.email });
+
+        // Delete the user
+        await User.findOneAndDelete({ email: req.session.user.email });
+
+        // Destroy session
+        req.session.destroy((err) => {
+            if (err) {
+                console.error('Session destruction error:', err);
+            }
+            console.log(`Account deleted for user ${req.session.user.email}`);
+            res.clearCookie('connect.sid');
+            res.json({ 
+                success: true, 
+                message: 'Account deleted successfully',
+                redirectTo: '/login'
+            });
+        });
+
+    } catch (error) {
+        console.error('Error deleting account:', error);
+        res.status(500).json({ success: false, message: 'Server error while deleting account' });
+    }
 });
 
 // Logout route
