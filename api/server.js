@@ -94,8 +94,8 @@ const sessionMiddleware = session({
 });
 
 // Basic middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 app.use(sessionMiddleware);
 
 // Serve static files from the "public" directory
@@ -725,7 +725,8 @@ app.post('/api/chat/send', async (req, res) => {
             messageType,
             hasImageData: !!imageData,
             imageName,
-            imageSize
+            imageSize,
+            imageDataLength: imageData ? imageData.length : 0
         });
         
         if (!groupId) {

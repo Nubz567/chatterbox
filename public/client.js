@@ -180,6 +180,13 @@ window.addEventListener('load', () => {
                 };
 
                 if (imageData) {
+                    // Check if image data is too large for JSON request
+                    const imageDataSize = imageData.imageData.length;
+                    if (imageDataSize > 10 * 1024 * 1024) { // 10MB limit for JSON
+                        debugLog(`ERROR: Image data too large for JSON request: ${Math.round(imageDataSize / 1024 / 1024)}MB`);
+                        throw new Error('Image is too large. Please try a smaller image.');
+                    }
+                    
                     // Send image message
                     Object.assign(requestBody, {
                         messageType: 'image',
@@ -190,11 +197,12 @@ window.addEventListener('load', () => {
                 } else {
                     // Send text message
                     Object.assign(requestBody, {
-                        message: message,
+                        message: message || '',
                         messageType: 'text'
                     });
                 }
                 
+                console.log('Sending request body:', requestBody);
                 const response = await fetch('/api/chat/send', {
                     method: 'POST',
                     headers: {
@@ -210,7 +218,8 @@ window.addEventListener('load', () => {
                     debugLog('Message sent successfully:', result);
                     return result.message;
         } else {
-                    debugLog(`ERROR: Failed to send message - Status: ${response.status}`);
+                    const errorText = await response.text();
+                    debugLog(`ERROR: Failed to send message - Status: ${response.status}, Response: ${errorText}`);
                     if (attempt === MAX_RETRIES) {
                         debugLog('ERROR: Max retries reached for message send');
                         return null;
@@ -702,7 +711,7 @@ window.addEventListener('load', () => {
                 const imageData = await handleImageUpload(file);
                 
                 // Send image message
-                const sentMessage = await sendMessage('', imageData);
+                const sentMessage = await sendMessage(null, imageData);
                 if (sentMessage) {
                     debugLog('Image sent successfully');
                     displayMessage(sentMessage);
@@ -789,7 +798,7 @@ window.addEventListener('load', () => {
                 const imageData = await handleImageUpload(file);
                 
                 // Send image message
-                const sentMessage = await sendMessage('', imageData);
+                const sentMessage = await sendMessage(null, imageData);
                 if (sentMessage) {
                     debugLog('Dropped image sent successfully');
                     displayMessage(sentMessage);
