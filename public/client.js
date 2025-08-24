@@ -37,6 +37,7 @@ window.addEventListener('load', () => {
     const modalImage = document.getElementById('modal-image');
     const modalClose = document.querySelector('.image-modal-close');
     const refreshMessagesButton = document.getElementById('refresh-messages');
+    const refreshMessagesPersistent = document.getElementById('refresh-messages-persistent');
 
     // Check if all required elements exist
     const requiredElements = {
@@ -54,7 +55,8 @@ window.addEventListener('load', () => {
         imageModal,
         modalImage,
         modalClose,
-        refreshMessagesButton
+        refreshMessagesButton,
+        refreshMessagesPersistent
     };
 
     const missingElements = Object.entries(requiredElements)
@@ -603,6 +605,11 @@ window.addEventListener('load', () => {
                 if (lastMessageId === null && messagesLoading) {
                     messagesLoading.style.display = 'none';
                     if (messagesList) messagesList.style.display = 'block';
+                    
+                    // Show "no messages" state
+                    if (messagesList) {
+                        messagesList.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #888; font-style: italic;">No messages yet. Start the conversation!</div>';
+                    }
                 }
             }
         } catch (error) {
@@ -611,6 +618,17 @@ window.addEventListener('load', () => {
             if (lastMessageId === null && messagesLoading) {
                 messagesLoading.style.display = 'none';
                 if (messagesList) messagesList.style.display = 'block';
+                
+                // Show error state with refresh option
+                if (messagesList) {
+                    messagesList.innerHTML = `
+                        <div style="text-align: center; padding: 40px 20px; color: #e74c3c;">
+                            <div style="margin-bottom: 15px; font-weight: bold;">Failed to load messages</div>
+                            <div style="margin-bottom: 20px; font-size: 14px;">Please try refreshing or check your connection.</div>
+                            <button onclick="location.reload()" style="padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">🔄 Reload Page</button>
+                        </div>
+                    `;
+                }
             }
         }
     }
@@ -775,6 +793,14 @@ window.addEventListener('load', () => {
         if (e.key === 'Escape' && imageModal && imageModal.style.display === 'block') {
             closeImageModal();
         }
+        
+        // Refresh messages with F5 or Ctrl+R
+        if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+            e.preventDefault(); // Prevent default browser refresh
+            if (refreshMessagesPersistent) {
+                refreshMessagesPersistent.click();
+            }
+        }
     });
 
     // Add drag and drop support for images
@@ -858,6 +884,31 @@ window.addEventListener('load', () => {
                 await pollMessages();
             } catch (error) {
                 debugLog(`ERROR refreshing messages: ${error.message}`);
+            }
+        });
+    }
+
+    // Handle persistent refresh messages button
+    if (refreshMessagesPersistent) {
+        refreshMessagesPersistent.addEventListener('click', async () => {
+            debugLog('Persistent refresh messages button clicked');
+            try {
+                // Show loading state
+                refreshMessagesPersistent.textContent = '⏳ Loading...';
+                refreshMessagesPersistent.disabled = true;
+                
+                // Reset last message ID to force reload
+                lastMessageId = null;
+                await pollMessages();
+                
+                // Reset button state
+                refreshMessagesPersistent.textContent = '🔄 Refresh';
+                refreshMessagesPersistent.disabled = false;
+            } catch (error) {
+                debugLog(`ERROR refreshing messages: ${error.message}`);
+                // Reset button state on error
+                refreshMessagesPersistent.textContent = '🔄 Refresh';
+                refreshMessagesPersistent.disabled = false;
             }
         });
     }
