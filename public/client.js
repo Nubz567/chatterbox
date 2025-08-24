@@ -36,6 +36,7 @@ window.addEventListener('load', () => {
     const imageModal = document.getElementById('image-modal');
     const modalImage = document.getElementById('modal-image');
     const modalClose = document.querySelector('.image-modal-close');
+    const refreshMessagesButton = document.getElementById('refresh-messages');
 
     // Check if all required elements exist
     const requiredElements = {
@@ -52,7 +53,8 @@ window.addEventListener('load', () => {
         imageInput,
         imageModal,
         modalImage,
-        modalClose
+        modalClose,
+        refreshMessagesButton
     };
 
     const missingElements = Object.entries(requiredElements)
@@ -563,30 +565,37 @@ window.addEventListener('load', () => {
             if (messages.length > 0) {
                 const lastMessage = messages[messages.length - 1];
                 
-                if (lastMessageId !== lastMessage.id) {
-                    debugLog(`New messages detected. Last ID: ${lastMessageId}, Current ID: ${lastMessage.id}`);
+                // First load - display all messages
+                if (lastMessageId === null) {
+                    debugLog('First load - displaying all messages');
+                    // Hide loading indicator and show messages
+                    if (messagesLoading) messagesLoading.style.display = 'none';
+                    if (messagesList) messagesList.style.display = 'block';
                     
-                    // Clear messages if this is the first load
-                    if (lastMessageId === null) {
-                        debugLog('First load - displaying all messages');
-                        // Hide loading indicator and show messages
-                        if (messagesLoading) messagesLoading.style.display = 'none';
-                        if (messagesList) messagesList.style.display = 'block';
-                        
+                    messagesList.innerHTML = '';
+                    messages.forEach(displayMessage);
+                    lastMessageId = lastMessage.id;
+                    debugLog(`First load complete. Last message ID: ${lastMessageId}`);
+                } else {
+                    // Check for new messages by comparing IDs
+                    const currentMessageIds = messages.map(msg => msg.id);
+                    const lastMessageIndex = currentMessageIds.indexOf(lastMessageId);
+                    
+                    if (lastMessageIndex === -1) {
+                        // Last message not found, might be a new session - reload all
+                        debugLog('Last message not found, reloading all messages');
                         messagesList.innerHTML = '';
                         messages.forEach(displayMessage);
-                    } else {
-                        // Only display new messages
-                        debugLog('Displaying new messages only');
-                        const newMessages = messages.filter(msg => 
-                            new Date(msg.timestamp) > new Date(lastMessageId)
-                        );
+                        lastMessageId = lastMessage.id;
+                    } else if (lastMessageIndex < messages.length - 1) {
+                        // New messages found
+                        const newMessages = messages.slice(lastMessageIndex + 1);
+                        debugLog(`Found ${newMessages.length} new messages`);
                         newMessages.forEach(displayMessage);
+                        lastMessageId = lastMessage.id;
+                    } else {
+                        debugLog('No new messages');
                     }
-                    
-                    lastMessageId = lastMessage.id;
-                } else {
-                    debugLog('No new messages');
                 }
             } else {
                 debugLog('No messages found');
@@ -620,17 +629,25 @@ window.addEventListener('load', () => {
     function startPolling() {
         debugLog('Starting polling...');
         
-        // Poll messages every 1.5 seconds (faster for better responsiveness)
+        // Poll messages every 2 seconds (more stable)
         messagePollInterval = setInterval(async () => {
-            await pollMessages();
-        }, 1500);
+            try {
+                await pollMessages();
+            } catch (error) {
+                debugLog(`Error in message polling: ${error.message}`);
+            }
+        }, 2000);
 
-        // Poll users every 10 seconds (faster for better user list updates)
+        // Poll users every 15 seconds (less frequent)
         userPollInterval = setInterval(async () => {
-            await pollUsers();
-        }, 10000);
+            try {
+                await pollUsers();
+            } catch (error) {
+                debugLog(`Error in user polling: ${error.message}`);
+            }
+        }, 15000);
         
-        debugLog('Polling started - Messages: 1.5s, Users: 10s');
+        debugLog('Polling started - Messages: 2s, Users: 15s');
     }
 
     // Stop polling
@@ -831,6 +848,20 @@ window.addEventListener('load', () => {
         });
     }
 
+    // Handle refresh messages button
+    if (refreshMessagesButton) {
+        refreshMessagesButton.addEventListener('click', async () => {
+            debugLog('Refresh messages button clicked');
+            try {
+                // Reset last message ID to force reload
+                lastMessageId = null;
+                await pollMessages();
+            } catch (error) {
+                debugLog(`ERROR refreshing messages: ${error.message}`);
+            }
+        });
+    }
+
 
 
     // Handle logout
@@ -870,8 +901,31 @@ window.addEventListener('load', () => {
         try {
             await fetchUserInfo();
             initializeEmojiPanel();
-            await pollMessages(); // Load initial messages
-            await pollUsers(); // Load initial users
+            
+            // Load initial messages with retry
+            let messagesLoaded = false;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    debugLog(`Loading initial messages (attempt ${attempt}/3)`);
+                    await pollMessages();
+                    messagesLoaded = true;
+                    break;
+                } catch (error) {
+                    debugLog(`Failed to load messages (attempt ${attempt}): ${error.message}`);
+                    if (attempt < 3) {
+                        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                    }
+                }
+            }
+            
+            if (!messagesLoaded) {
+                debugLog('WARNING: Failed to load initial messages after 3 attempts');
+            }
+            
+            // Load initial users
+            await pollUsers();
+            
+            // Start polling
             startPolling();
             
             debugLog('Chat initialization complete');
@@ -882,6 +936,17 @@ window.addEventListener('load', () => {
 
     // Start the chat
     initializeChat();
+
+    // Handle page visibility changes
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            debugLog('Page hidden - pausing polling');
+            stopPolling();
+        } else {
+            debugLog('Page visible - resuming polling');
+            startPolling();
+        }
+    });
 
     // Cleanup on page unload
     window.addEventListener('beforeunload', () => {
