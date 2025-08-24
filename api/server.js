@@ -62,6 +62,10 @@ const messageSchema = new mongoose.Schema({
     user: { type: String, required: true },
     email: { type: String, required: true },
     text: { type: String, required: true },
+    messageType: { type: String, enum: ['text', 'image'], default: 'text' },
+    imageData: { type: String }, // Base64 encoded image data
+    imageName: { type: String },
+    imageSize: { type: Number },
     timestamp: { type: Date, default: Date.now }
 });
  
@@ -714,12 +718,36 @@ app.post('/api/chat/send', async (req, res) => {
             return res.status(401).json({ error: 'Not authenticated' });
         }
 
-        const { message, groupId } = req.body;
-        console.log('Message data:', { message: message?.substring(0, 50), groupId });
+        const { message, groupId, messageType, imageData, imageName, imageSize } = req.body;
+        console.log('Message data:', { 
+            message: message?.substring(0, 50), 
+            groupId, 
+            messageType,
+            hasImageData: !!imageData,
+            imageName,
+            imageSize
+        });
         
-        if (!message || !groupId) {
-            console.log('ERROR: Missing required fields');
-            return res.status(400).json({ error: 'Message and groupId are required' });
+        if (!groupId) {
+            console.log('ERROR: Missing groupId');
+            return res.status(400).json({ error: 'GroupId is required' });
+        }
+
+        // Validate message type and content
+        if (messageType === 'image') {
+            if (!imageData || !imageName) {
+                console.log('ERROR: Missing image data or name');
+                return res.status(400).json({ error: 'Image data and name are required for image messages' });
+            }
+            if (imageSize && imageSize > 5 * 1024 * 1024) { // 5MB limit
+                console.log('ERROR: Image too large');
+                return res.status(400).json({ error: 'Image size must be less than 5MB' });
+            }
+    } else {
+            if (!message || message.trim() === '') {
+                console.log('ERROR: Missing text message');
+                return res.status(400).json({ error: 'Message text is required for text messages' });
+            }
         }
 
         // Verify user is member of the group
@@ -737,33 +765,35 @@ app.post('/api/chat/send', async (req, res) => {
             return res.status(403).json({ error: 'Not a member of this group' });
         }
 
-        const messageData = {
-            id: Date.now().toString(),
-            user: req.session.user.username,
-            email: req.session.user.email,
-            text: message,
-            timestamp: new Date(),
-            groupId: groupId
-        };
-
-        console.log('Message data created:', messageData);
-
-        // Save message to database
-        const newMessage = new Message({
+        // Create message object
+        const messageObj = {
             groupId: groupId,
             user: req.session.user.username,
             email: req.session.user.email,
-            text: message,
+            messageType: messageType || 'text',
             timestamp: new Date()
-        });
+        };
+
+        // Add content based on message type
+        if (messageType === 'image') {
+            messageObj.text = `📷 ${imageName}`;
+            messageObj.imageData = imageData;
+            messageObj.imageName = imageName;
+            messageObj.imageSize = imageSize;
+        } else {
+            messageObj.text = message;
+        }
 
         console.log('Saving message to database:', {
             groupId: groupId,
             user: req.session.user.username,
             email: req.session.user.email,
-            text: message.substring(0, 50)
+            messageType: messageObj.messageType,
+            text: messageObj.text.substring(0, 50)
         });
 
+        // Save message to database
+        const newMessage = new Message(messageObj);
         await newMessage.save();
         console.log('Message saved to database with ID:', newMessage._id);
 
@@ -786,6 +816,10 @@ app.post('/api/chat/send', async (req, res) => {
             user: newMessage.user,
             email: newMessage.email,
             text: newMessage.text,
+            messageType: newMessage.messageType,
+            imageData: newMessage.imageData,
+            imageName: newMessage.imageName,
+            imageSize: newMessage.imageSize,
             timestamp: newMessage.timestamp,
             groupId: newMessage.groupId
         };
@@ -832,7 +866,7 @@ app.get('/api/chat/messages/:groupId', async (req, res) => {
         // Fetch messages from database with optimized query
         console.log('Fetching messages from database for groupId:', groupId);
         const messages = await Message.find({ groupId: groupId })
-            .select('_id user email text timestamp groupId')
+            .select('_id user email text messageType imageData imageName imageSize timestamp groupId')
             .sort({ timestamp: 1 })
             .limit(MAX_MESSAGES)
             .lean();
@@ -845,6 +879,10 @@ app.get('/api/chat/messages/:groupId', async (req, res) => {
             user: m.user,
             email: m.email,
             text: m.text,
+            messageType: m.messageType || 'text',
+            imageData: m.imageData,
+            imageName: m.imageName,
+            imageSize: m.imageSize,
             timestamp: m.timestamp,
             groupId: m.groupId
         }));

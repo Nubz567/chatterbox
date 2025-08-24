@@ -31,6 +31,11 @@ window.addEventListener('load', () => {
     const usernameDisplay = document.getElementById('username-display');
     const userListLoading = document.getElementById('user-list-loading');
     const messagesLoading = document.getElementById('messages-loading');
+    const imageUploadButton = document.getElementById('image-upload-button');
+    const imageInput = document.getElementById('image-input');
+    const imageModal = document.getElementById('image-modal');
+    const modalImage = document.getElementById('modal-image');
+    const modalClose = document.querySelector('.image-modal-close');
 
     // Check if all required elements exist
     const requiredElements = {
@@ -42,7 +47,12 @@ window.addEventListener('load', () => {
         emojiPanel,
         usernameDisplay,
         userListLoading,
-        messagesLoading
+        messagesLoading,
+        imageUploadButton,
+        imageInput,
+        imageModal,
+        modalImage,
+        modalClose
     };
 
     const missingElements = Object.entries(requiredElements)
@@ -155,10 +165,35 @@ window.addEventListener('load', () => {
     }
 
     // Send message with retry logic
-    async function sendMessage(message) {
+    async function sendMessage(message, imageData = null) {
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
-                debugLog(`Sending message (attempt ${attempt}/${MAX_RETRIES}): ${message.substring(0, 50)}...`);
+                const messageType = imageData ? 'image' : 'text';
+                const logMessage = imageData ? 
+                    `Sending image message (attempt ${attempt}/${MAX_RETRIES}): ${imageData.imageName}` :
+                    `Sending message (attempt ${attempt}/${MAX_RETRIES}): ${message.substring(0, 50)}...`;
+                
+                debugLog(logMessage);
+                
+                const requestBody = {
+                    groupId: currentGroupId
+                };
+
+                if (imageData) {
+                    // Send image message
+                    Object.assign(requestBody, {
+                        messageType: 'image',
+                        imageData: imageData.imageData,
+                        imageName: imageData.imageName,
+                        imageSize: imageData.imageSize
+                    });
+                } else {
+                    // Send text message
+                    Object.assign(requestBody, {
+                        message: message,
+                        messageType: 'text'
+                    });
+                }
                 
                 const response = await fetch('/api/chat/send', {
                     method: 'POST',
@@ -166,10 +201,7 @@ window.addEventListener('load', () => {
                         'Content-Type': 'application/json',
                         'Cache-Control': 'no-cache'
                     },
-                    body: JSON.stringify({
-                        message: message,
-                        groupId: currentGroupId
-                    }),
+                    body: JSON.stringify(requestBody),
                     credentials: 'include'
                 });
 
@@ -306,7 +338,37 @@ window.addEventListener('load', () => {
         item.appendChild(timeSpan);
 
         const messageContentSpan = document.createElement('span');
+        
+        // Handle different message types
+        if (messageData.messageType === 'image' && messageData.imageData) {
+            // Display image message
+            messageContentSpan.innerHTML = `${escapeHTML(messageData.user)}: `;
+            
+            const imageElement = document.createElement('img');
+            imageElement.src = messageData.imageData;
+            imageElement.alt = messageData.imageName || 'Image';
+            imageElement.className = 'message-image';
+            imageElement.title = messageData.imageName || 'Click to view full size';
+            
+            // Add click handler for full-size view
+            imageElement.addEventListener('click', () => {
+                showImageModal(messageData.imageData, messageData.imageName);
+            });
+            
+            messageContentSpan.appendChild(imageElement);
+            
+            // Add image name below
+            if (messageData.imageName) {
+                const imageNameSpan = document.createElement('div');
+                imageNameSpan.style.cssText = 'font-size: 12px; color: #666; margin-top: 5px;';
+                imageNameSpan.textContent = messageData.imageName;
+                messageContentSpan.appendChild(imageNameSpan);
+            }
+        } else {
+            // Display text message
             messageContentSpan.innerHTML = `${escapeHTML(messageData.user)}: ${escapeHTML(messageData.text)}`;
+        }
+        
         item.appendChild(messageContentSpan);
 
             if (currentUserEmail && messageData.email === currentUserEmail) {
@@ -321,6 +383,126 @@ window.addEventListener('load', () => {
         } catch (error) {
             debugLog(`ERROR displaying message: ${error.message}`);
         }
+    }
+
+    // Show image modal for full-size view
+    function showImageModal(imageSrc, imageName) {
+        if (modalImage && imageModal) {
+            modalImage.src = imageSrc;
+            modalImage.alt = imageName || 'Full size image';
+            imageModal.style.display = 'block';
+        }
+    }
+
+    // Close image modal
+    function closeImageModal() {
+        if (imageModal) {
+            imageModal.style.display = 'none';
+        }
+    }
+
+    // Handle image upload with optional compression
+    function handleImageUpload(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const base64Data = e.target.result;
+                const imageSize = file.size;
+                const imageName = file.name;
+                
+                // Validate file size (5MB limit)
+                if (imageSize > 5 * 1024 * 1024) {
+                    reject(new Error('Image size must be less than 5MB'));
+            return;
+        }
+    
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    reject(new Error('Please select a valid image file'));
+                    return;
+                }
+                
+                // Compress image if it's larger than 1MB
+                if (imageSize > 1024 * 1024) {
+                    compressImage(base64Data, imageName)
+                        .then(compressedData => resolve(compressedData))
+                        .catch(error => {
+                            debugLog(`Compression failed, using original: ${error.message}`);
+                            resolve({
+                                imageData: base64Data,
+                                imageName: imageName,
+                                imageSize: imageSize
+                            });
+                        });
+                } else {
+                    resolve({
+                        imageData: base64Data,
+                        imageName: imageName,
+                        imageSize: imageSize
+                    });
+                }
+            };
+            
+            reader.onerror = function() {
+                reject(new Error('Failed to read image file'));
+            };
+            
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // Compress image to reduce file size
+    function compressImage(base64Data, imageName) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Calculate new dimensions (max 800px width/height)
+                let { width, height } = img;
+                const maxSize = 800;
+                
+                if (width > height) {
+                    if (width > maxSize) {
+                        height = (height * maxSize) / width;
+                        width = maxSize;
+                    }
+        } else {
+                    if (height > maxSize) {
+                        width = (width * maxSize) / height;
+                        height = maxSize;
+                    }
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                
+                // Draw and compress
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Convert to base64 with quality 0.8
+                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                
+                // Calculate new size
+                const compressedSize = Math.ceil((compressedBase64.length * 3) / 4);
+                
+                debugLog(`Image compressed: ${imageName} - Original: ${Math.round(base64Data.length / 1024)}KB, Compressed: ${Math.round(compressedSize / 1024)}KB`);
+                
+                resolve({
+                    imageData: compressedBase64,
+                    imageName: imageName,
+                    imageSize: compressedSize
+                });
+            };
+            
+            img.onerror = function() {
+                reject(new Error('Failed to load image for compression'));
+            };
+            
+            img.src = base64Data;
+        });
     }
 
     // Display user list
@@ -494,6 +676,140 @@ window.addEventListener('load', () => {
         emojiButton.addEventListener('click', () => {
             debugLog('Emoji button clicked');
             emojiPanel.classList.toggle('hidden');
+        });
+    }
+
+    // Handle image upload button
+    if (imageUploadButton && imageInput) {
+        imageUploadButton.addEventListener('click', () => {
+            debugLog('Image upload button clicked');
+            imageInput.click();
+        });
+
+        imageInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                debugLog(`Image selected: ${file.name} (${file.size} bytes)`);
+                
+                // Show loading state
+                const originalText = imageUploadButton.textContent;
+                imageUploadButton.textContent = '⏳';
+                imageUploadButton.disabled = true;
+
+                // Process image
+                const imageData = await handleImageUpload(file);
+                
+                // Send image message
+                const sentMessage = await sendMessage('', imageData);
+                if (sentMessage) {
+                    debugLog('Image sent successfully');
+                    displayMessage(sentMessage);
+                } else {
+                    debugLog('ERROR: Failed to send image');
+                    alert('Failed to send image. Please try again.');
+                }
+
+                // Reset button state
+                imageUploadButton.textContent = originalText;
+                imageUploadButton.disabled = false;
+                
+                // Clear file input
+                imageInput.value = '';
+                
+            } catch (error) {
+                debugLog(`ERROR uploading image: ${error.message}`);
+                alert(`Error uploading image: ${error.message}`);
+                
+                // Reset button state
+                imageUploadButton.textContent = originalText;
+                imageUploadButton.disabled = false;
+                imageInput.value = '';
+            }
+        });
+    }
+
+    // Handle image modal
+    if (modalClose) {
+        modalClose.addEventListener('click', closeImageModal);
+    }
+
+    // Close modal when clicking outside
+    if (imageModal) {
+        imageModal.addEventListener('click', (e) => {
+            if (e.target === imageModal) {
+                closeImageModal();
+            }
+        });
+    }
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && imageModal && imageModal.style.display === 'block') {
+            closeImageModal();
+        }
+    });
+
+    // Add drag and drop support for images
+    if (messageForm) {
+        messageForm.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            messageForm.classList.add('drag-over');
+        });
+
+        messageForm.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            messageForm.classList.remove('drag-over');
+        });
+
+        messageForm.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            messageForm.classList.remove('drag-over');
+
+            const files = Array.from(e.dataTransfer.files);
+            const imageFiles = files.filter(file => file.type.startsWith('image/'));
+
+            if (imageFiles.length === 0) {
+                alert('Please drop image files only.');
+                return;
+            }
+
+            // Handle first image file
+            const file = imageFiles[0];
+            try {
+                debugLog(`Image dropped: ${file.name} (${file.size} bytes)`);
+                
+                // Show loading state
+                const originalText = imageUploadButton.textContent;
+                imageUploadButton.textContent = '⏳';
+                imageUploadButton.disabled = true;
+
+                // Process image
+                const imageData = await handleImageUpload(file);
+                
+                // Send image message
+                const sentMessage = await sendMessage('', imageData);
+                if (sentMessage) {
+                    debugLog('Dropped image sent successfully');
+                    displayMessage(sentMessage);
+    } else {
+                    debugLog('ERROR: Failed to send dropped image');
+                    alert('Failed to send image. Please try again.');
+                }
+
+                // Reset button state
+                imageUploadButton.textContent = originalText;
+                imageUploadButton.disabled = false;
+                
+            } catch (error) {
+                debugLog(`ERROR uploading dropped image: ${error.message}`);
+                alert(`Error uploading image: ${error.message}`);
+                
+                // Reset button state
+                imageUploadButton.textContent = originalText;
+                imageUploadButton.disabled = false;
+            }
         });
     }
 
