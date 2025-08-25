@@ -662,14 +662,14 @@ window.addEventListener('load', () => {
     function startPolling() {
         debugLog('Starting polling...');
         
-        // Poll messages every 2 seconds (more stable)
+        // Poll messages every 1 second for faster updates
         messagePollInterval = setInterval(async () => {
             try {
                 await pollMessages();
             } catch (error) {
                 debugLog(`Error in message polling: ${error.message}`);
             }
-        }, 2000);
+        }, 1000);
 
         // Poll users every 15 seconds (less frequent)
         userPollInterval = setInterval(async () => {
@@ -680,7 +680,7 @@ window.addEventListener('load', () => {
             }
         }, 15000);
         
-        debugLog('Polling started - Messages: 2s, Users: 15s');
+        debugLog('Polling started - Messages: 1s, Users: 15s');
     }
 
     // Stop polling
@@ -720,8 +720,10 @@ window.addEventListener('load', () => {
             const sentMessage = await sendMessage(message);
             if (sentMessage) {
                 debugLog('Message sent and received confirmation');
-                // Don't display immediately - let polling handle it
-                // This prevents duplicate messages for the sender
+                // Display immediately for instant feedback
+                displayMessage(sentMessage);
+                // Update lastMessageId to prevent duplicate from polling
+                lastMessageId = sentMessage.id;
         } else {
                 debugLog('ERROR: Failed to send message');
                 // Restore the message to input for retry
@@ -764,8 +766,10 @@ window.addEventListener('load', () => {
                 const sentMessage = await sendMessage(null, imageData);
                 if (sentMessage) {
                     debugLog('Image sent successfully');
-                    // Don't display immediately - let polling handle it
-                    // This prevents duplicate messages for the sender
+                    // Display immediately for instant feedback
+                    displayMessage(sentMessage);
+                    // Update lastMessageId to prevent duplicate from polling
+                    lastMessageId = sentMessage.id;
                 } else {
                     debugLog('ERROR: Failed to send image');
                     alert('Failed to send image. Please try again.');
@@ -860,8 +864,10 @@ window.addEventListener('load', () => {
                 const sentMessage = await sendMessage(null, imageData);
                 if (sentMessage) {
                     debugLog('Dropped image sent successfully');
-                    // Don't display immediately - let polling handle it
-                    // This prevents duplicate messages for the sender
+                    // Display immediately for instant feedback
+                    displayMessage(sentMessage);
+                    // Update lastMessageId to prevent duplicate from polling
+                    lastMessageId = sentMessage.id;
         } else {
                     debugLog('ERROR: Failed to send dropped image');
                     alert('Failed to send image. Please try again.');
