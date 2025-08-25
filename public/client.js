@@ -883,9 +883,35 @@ window.addEventListener('load', () => {
                 refreshMessagesButton.textContent = '⏳ Loading...';
                 refreshMessagesButton.disabled = true;
                 
+                // Temporarily stop polling to prevent interference
+                stopPolling();
+                
                 // Reset last message ID to force reload
                 lastMessageId = null;
-                await pollMessages();
+                
+                // Fetch messages directly
+                const messages = await fetchMessages();
+                
+                if (messages.length > 0) {
+                    // Clear and display all messages
+                    messagesList.innerHTML = '';
+                    messages.forEach(displayMessage);
+                    lastMessageId = messages[messages.length - 1].id;
+                    
+                    // Hide loading and show messages
+                    if (messagesLoading) messagesLoading.style.display = 'none';
+                    if (messagesList) messagesList.style.display = 'block';
+                } else {
+                    // Show "no messages" state
+                    if (messagesLoading) messagesLoading.style.display = 'none';
+                    if (messagesList) {
+                        messagesList.style.display = 'block';
+                        messagesList.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #888; font-style: italic;">No messages yet. Start the conversation!</div>';
+                    }
+                }
+                
+                // Restart polling
+                startPolling();
                 
                 // Reset button state
                 refreshMessagesButton.textContent = 'Refresh Messages';
@@ -895,6 +921,9 @@ window.addEventListener('load', () => {
                 // Reset button state on error
                 refreshMessagesButton.textContent = 'Refresh Messages';
                 refreshMessagesButton.disabled = false;
+                
+                // Restart polling even on error
+                startPolling();
             }
         });
     }
@@ -919,9 +948,38 @@ window.addEventListener('load', () => {
                 // Small delay to show loading state
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
+                // Temporarily stop polling to prevent interference
+                stopPolling();
+                
                 // Reset last message ID to force reload
                 lastMessageId = null;
-                await pollMessages();
+                
+                // Fetch messages directly instead of using pollMessages
+                const messages = await fetchMessages();
+                
+                if (messages.length > 0) {
+                    // Clear and display all messages
+                    messagesList.innerHTML = '';
+                    messages.forEach(displayMessage);
+                    lastMessageId = messages[messages.length - 1].id;
+                    
+                    // Hide loading and show messages
+                    if (messagesLoading) messagesLoading.style.display = 'none';
+                    if (messagesList) messagesList.style.display = 'block';
+                    
+                    debugLog(`Refresh complete. Loaded ${messages.length} messages. Last ID: ${lastMessageId}`);
+                } else {
+                    // Show "no messages" state
+                    if (messagesLoading) messagesLoading.style.display = 'none';
+                    if (messagesList) {
+                        messagesList.style.display = 'block';
+                        messagesList.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #888; font-style: italic;">No messages yet. Start the conversation!</div>';
+                    }
+                    debugLog('Refresh complete. No messages found.');
+                }
+                
+                // Restart polling
+                startPolling();
                 
                 // Reset button state
                 refreshMessagesPersistent.textContent = '🔄 Refresh';
@@ -931,6 +989,9 @@ window.addEventListener('load', () => {
                 // Reset button state on error
                 refreshMessagesPersistent.textContent = '🔄 Refresh';
                 refreshMessagesPersistent.disabled = false;
+                
+                // Restart polling even on error
+                startPolling();
                 
                 // Show error state
                 if (messagesLoading) {
@@ -995,7 +1056,31 @@ window.addEventListener('load', () => {
             for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
                     debugLog(`Loading initial messages (attempt ${attempt}/3)`);
-                    await pollMessages();
+                    
+                    // Fetch messages directly for initial load
+                    const messages = await fetchMessages();
+                    
+                    if (messages.length > 0) {
+                        // Clear and display all messages
+                        messagesList.innerHTML = '';
+                        messages.forEach(displayMessage);
+                        lastMessageId = messages[messages.length - 1].id;
+                        
+                        // Hide loading and show messages
+                        if (messagesLoading) messagesLoading.style.display = 'none';
+                        if (messagesList) messagesList.style.display = 'block';
+                        
+                        debugLog(`Initial load complete. Loaded ${messages.length} messages. Last ID: ${lastMessageId}`);
+                    } else {
+                        // Show "no messages" state
+                        if (messagesLoading) messagesLoading.style.display = 'none';
+                        if (messagesList) {
+                            messagesList.style.display = 'block';
+                            messagesList.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #888; font-style: italic;">No messages yet. Start the conversation!</div>';
+                        }
+                        debugLog('Initial load complete. No messages found.');
+                    }
+                    
                     messagesLoaded = true;
                     break;
                 } catch (error) {
@@ -1008,6 +1093,18 @@ window.addEventListener('load', () => {
             
             if (!messagesLoaded) {
                 debugLog('WARNING: Failed to load initial messages after 3 attempts');
+                // Show error state
+                if (messagesLoading) messagesLoading.style.display = 'none';
+                if (messagesList) {
+                    messagesList.style.display = 'block';
+                    messagesList.innerHTML = `
+                        <div style="text-align: center; padding: 40px 20px; color: #e74c3c;">
+                            <div style="margin-bottom: 15px; font-weight: bold;">Failed to load messages</div>
+                            <div style="margin-bottom: 20px; font-size: 14px;">Please try refreshing or check your connection.</div>
+                            <button onclick="location.reload()" style="padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">🔄 Reload Page</button>
+                        </div>
+                    `;
+                }
             }
             
             // Load initial users
