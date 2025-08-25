@@ -879,11 +879,22 @@ window.addEventListener('load', () => {
         refreshMessagesButton.addEventListener('click', async () => {
             debugLog('Refresh messages button clicked');
             try {
+                // Show loading state
+                refreshMessagesButton.textContent = '⏳ Loading...';
+                refreshMessagesButton.disabled = true;
+                
                 // Reset last message ID to force reload
                 lastMessageId = null;
                 await pollMessages();
+                
+                // Reset button state
+                refreshMessagesButton.textContent = 'Refresh Messages';
+                refreshMessagesButton.disabled = false;
             } catch (error) {
                 debugLog(`ERROR refreshing messages: ${error.message}`);
+                // Reset button state on error
+                refreshMessagesButton.textContent = 'Refresh Messages';
+                refreshMessagesButton.disabled = false;
             }
         });
     }
@@ -897,6 +908,17 @@ window.addEventListener('load', () => {
                 refreshMessagesPersistent.textContent = '⏳ Loading...';
                 refreshMessagesPersistent.disabled = true;
                 
+                // Show loading indicator
+                if (messagesLoading) {
+                    messagesLoading.style.display = 'block';
+                }
+                if (messagesList) {
+                    messagesList.style.display = 'none';
+                }
+                
+                // Small delay to show loading state
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
                 // Reset last message ID to force reload
                 lastMessageId = null;
                 await pollMessages();
@@ -909,6 +931,21 @@ window.addEventListener('load', () => {
                 // Reset button state on error
                 refreshMessagesPersistent.textContent = '🔄 Refresh';
                 refreshMessagesPersistent.disabled = false;
+                
+                // Show error state
+                if (messagesLoading) {
+                    messagesLoading.style.display = 'none';
+                }
+                if (messagesList) {
+                    messagesList.style.display = 'block';
+                    messagesList.innerHTML = `
+                        <div style="text-align: center; padding: 40px 20px; color: #e74c3c;">
+                            <div style="margin-bottom: 15px; font-weight: bold;">Failed to load messages</div>
+                            <div style="margin-bottom: 20px; font-size: 14px;">Please try refreshing again or check your connection.</div>
+                            <button onclick="location.reload()" style="padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">🔄 Reload Page</button>
+                        </div>
+                    `;
+                }
             }
         });
     }
