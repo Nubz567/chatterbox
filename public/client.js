@@ -720,8 +720,8 @@ window.addEventListener('load', () => {
             const sentMessage = await sendMessage(message);
             if (sentMessage) {
                 debugLog('Message sent and received confirmation');
-                // Display the sent message immediately
-                displayMessage(sentMessage);
+                // Don't display immediately - let polling handle it
+                // This prevents duplicate messages for the sender
         } else {
                 debugLog('ERROR: Failed to send message');
                 // Restore the message to input for retry
@@ -764,7 +764,8 @@ window.addEventListener('load', () => {
                 const sentMessage = await sendMessage(null, imageData);
                 if (sentMessage) {
                     debugLog('Image sent successfully');
-                    displayMessage(sentMessage);
+                    // Don't display immediately - let polling handle it
+                    // This prevents duplicate messages for the sender
                 } else {
                     debugLog('ERROR: Failed to send image');
                     alert('Failed to send image. Please try again.');
@@ -859,7 +860,8 @@ window.addEventListener('load', () => {
                 const sentMessage = await sendMessage(null, imageData);
                 if (sentMessage) {
                     debugLog('Dropped image sent successfully');
-                    displayMessage(sentMessage);
+                    // Don't display immediately - let polling handle it
+                    // This prevents duplicate messages for the sender
         } else {
                     debugLog('ERROR: Failed to send dropped image');
                     alert('Failed to send image. Please try again.');
