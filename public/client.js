@@ -619,17 +619,12 @@ window.addEventListener('load', () => {
                         debugLog('No new messages');
                     }
                 }
-        } else {
+                    } else {
                 debugLog('No messages found');
                 // Hide loading indicator even if no messages
                 if (lastMessageId === null && messagesLoading) {
                     messagesLoading.style.display = 'none';
                     if (messagesList) messagesList.style.display = 'block';
-                    
-                    // Show "no messages" state
-                    if (messagesList) {
-                        messagesList.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #888; font-style: italic;">No messages yet. Start the conversation!</div>';
-                    }
                 }
             }
         } catch (error) {
@@ -932,12 +927,9 @@ window.addEventListener('load', () => {
                     if (messagesLoading) messagesLoading.style.display = 'none';
                     if (messagesList) messagesList.style.display = 'block';
                 } else {
-                    // Show "no messages" state
+                    // Just hide loading indicator if no messages
                     if (messagesLoading) messagesLoading.style.display = 'none';
-                    if (messagesList) {
-                        messagesList.style.display = 'block';
-                        messagesList.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #888; font-style: italic;">No messages yet. Start the conversation!</div>';
-                    }
+                    if (messagesList) messagesList.style.display = 'block';
                 }
                 
                 // Restart polling
@@ -1009,12 +1001,9 @@ window.addEventListener('load', () => {
                     
                     debugLog(`Refresh complete. Loaded ${messages.length} messages one by one. Last ID: ${lastMessageId}`);
                 } else {
-                    // Show "no messages" state
+                    // Just hide loading indicator if no messages
                     if (messagesLoading) messagesLoading.style.display = 'none';
-                    if (messagesList) {
-                        messagesList.style.display = 'block';
-                        messagesList.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #888; font-style: italic;">No messages yet. Start the conversation!</div>';
-                    }
+                    if (messagesList) messagesList.style.display = 'block';
                     debugLog('Refresh complete. No messages found.');
                 }
                 
@@ -1121,15 +1110,12 @@ window.addEventListener('load', () => {
                         if (messagesList) messagesList.style.display = 'block';
                         
                         debugLog(`Initial load complete. Loaded ${messages.length} messages one by one. Last ID: ${lastMessageId}`);
-                    } else {
-                        // Show "no messages" state
-                        if (messagesLoading) messagesLoading.style.display = 'none';
-                        if (messagesList) {
-                            messagesList.style.display = 'block';
-                            messagesList.innerHTML = '<div style="text-align: center; padding: 40px 20px; color: #888; font-style: italic;">No messages yet. Start the conversation!</div>';
-                        }
-                        debugLog('Initial load complete. No messages found.');
-                    }
+                                    } else {
+                    // Just hide loading indicator if no messages
+                    if (messagesLoading) messagesLoading.style.display = 'none';
+                    if (messagesList) messagesList.style.display = 'block';
+                    debugLog('Initial load complete. No messages found.');
+                }
                     
                     messagesLoaded = true;
                     break;
