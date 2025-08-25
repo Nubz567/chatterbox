@@ -198,7 +198,7 @@ window.addEventListener('load', () => {
                         imageName: imageData.imageName,
                         imageSize: imageData.imageSize
                     });
-                } else {
+        } else {
                     // Send text message
                     Object.assign(requestBody, {
                         message: message || '',
@@ -587,19 +587,39 @@ window.addEventListener('load', () => {
                         // Last message not found, might be a new session - reload all
                         debugLog('Last message not found, reloading all messages');
                         messagesList.innerHTML = '';
-                        messages.forEach(displayMessage);
+                        
+                        // Load messages one at a time
+                        for (let i = 0; i < messages.length; i++) {
+                            displayMessage(messages[i]);
+                            
+                            // Small delay between messages for smooth loading
+                            if (i < messages.length - 1) {
+                                await new Promise(resolve => setTimeout(resolve, 30));
+                            }
+                        }
+                        
                         lastMessageId = lastMessage.id;
                     } else if (lastMessageIndex < messages.length - 1) {
                         // New messages found
                         const newMessages = messages.slice(lastMessageIndex + 1);
                         debugLog(`Found ${newMessages.length} new messages`);
-                        newMessages.forEach(displayMessage);
+                        
+                        // Load new messages one at a time
+                        for (let i = 0; i < newMessages.length; i++) {
+                            displayMessage(newMessages[i]);
+                            
+                            // Small delay between messages for smooth loading
+                            if (i < newMessages.length - 1) {
+                                await new Promise(resolve => setTimeout(resolve, 30));
+                            }
+                        }
+                        
                         lastMessageId = lastMessage.id;
                     } else {
                         debugLog('No new messages');
                     }
                 }
-            } else {
+        } else {
                 debugLog('No messages found');
                 // Hide loading indicator even if no messages
                 if (lastMessageId === null && messagesLoading) {
@@ -845,7 +865,7 @@ window.addEventListener('load', () => {
                 if (sentMessage) {
                     debugLog('Dropped image sent successfully');
                     displayMessage(sentMessage);
-    } else {
+        } else {
                     debugLog('ERROR: Failed to send dropped image');
                     alert('Failed to send image. Please try again.');
                 }
@@ -893,9 +913,19 @@ window.addEventListener('load', () => {
                 const messages = await fetchMessages();
                 
                 if (messages.length > 0) {
-                    // Clear and display all messages
+                    // Clear messages list
                     messagesList.innerHTML = '';
-                    messages.forEach(displayMessage);
+                    
+                    // Load messages one at a time for better performance
+                    for (let i = 0; i < messages.length; i++) {
+                        displayMessage(messages[i]);
+                        
+                        // Small delay between messages for smooth loading
+                        if (i < messages.length - 1) {
+                            await new Promise(resolve => setTimeout(resolve, 50));
+                        }
+                    }
+                    
                     lastMessageId = messages[messages.length - 1].id;
                     
                     // Hide loading and show messages
@@ -954,20 +984,30 @@ window.addEventListener('load', () => {
                 // Reset last message ID to force reload
                 lastMessageId = null;
                 
-                // Fetch messages directly instead of using pollMessages
+                                // Fetch messages directly instead of using pollMessages
                 const messages = await fetchMessages();
                 
                 if (messages.length > 0) {
-                    // Clear and display all messages
+                    // Clear messages list
                     messagesList.innerHTML = '';
-                    messages.forEach(displayMessage);
+                    
+                    // Load messages one at a time for better performance
+                    for (let i = 0; i < messages.length; i++) {
+                        displayMessage(messages[i]);
+                        
+                        // Small delay between messages for smooth loading
+                        if (i < messages.length - 1) {
+                            await new Promise(resolve => setTimeout(resolve, 50));
+                        }
+                    }
+                    
                     lastMessageId = messages[messages.length - 1].id;
                     
                     // Hide loading and show messages
                     if (messagesLoading) messagesLoading.style.display = 'none';
                     if (messagesList) messagesList.style.display = 'block';
                     
-                    debugLog(`Refresh complete. Loaded ${messages.length} messages. Last ID: ${lastMessageId}`);
+                    debugLog(`Refresh complete. Loaded ${messages.length} messages one by one. Last ID: ${lastMessageId}`);
                 } else {
                     // Show "no messages" state
                     if (messagesLoading) messagesLoading.style.display = 'none';
@@ -1061,16 +1101,26 @@ window.addEventListener('load', () => {
                     const messages = await fetchMessages();
                     
                     if (messages.length > 0) {
-                        // Clear and display all messages
+                        // Clear messages list
                         messagesList.innerHTML = '';
-                        messages.forEach(displayMessage);
+                        
+                        // Load messages one at a time for better performance
+                        for (let i = 0; i < messages.length; i++) {
+                            displayMessage(messages[i]);
+                            
+                            // Small delay between messages for smooth loading
+                            if (i < messages.length - 1) {
+                                await new Promise(resolve => setTimeout(resolve, 50));
+                            }
+                        }
+                        
                         lastMessageId = messages[messages.length - 1].id;
                         
                         // Hide loading and show messages
                         if (messagesLoading) messagesLoading.style.display = 'none';
                         if (messagesList) messagesList.style.display = 'block';
                         
-                        debugLog(`Initial load complete. Loaded ${messages.length} messages. Last ID: ${lastMessageId}`);
+                        debugLog(`Initial load complete. Loaded ${messages.length} messages one by one. Last ID: ${lastMessageId}`);
                     } else {
                         // Show "no messages" state
                         if (messagesLoading) messagesLoading.style.display = 'none';
