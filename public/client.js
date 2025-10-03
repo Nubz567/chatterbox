@@ -755,6 +755,7 @@ window.addEventListener('load', () => {
         debugLog(`imageUploadButton: ${!!imageUploadButton}, imageInput: ${!!imageInput}`);
     }
 
+    if (imageInput) {
         imageInput.addEventListener('change', async (e) => {
             debugLog('Image input change event triggered');
             const file = e.target.files[0];
