@@ -438,25 +438,21 @@ window.addEventListener('load', () => {
                     return;
                 }
                 
-                // Compress image if it's larger than 1MB
-                if (imageSize > 1024 * 1024) {
-                    compressImage(base64Data, imageName)
-                        .then(compressedData => resolve(compressedData))
-                        .catch(error => {
-                            debugLog(`Compression failed, using original: ${error.message}`);
-                            resolve({
-                                imageData: base64Data,
-                                imageName: imageName,
-                                imageSize: imageSize
-                            });
+                // Always compress images to reduce size and prevent 500 errors
+                compressImage(base64Data, imageName)
+                    .then(compressedData => {
+                        debugLog(`Image processed: ${imageName} - Original: ${Math.round(imageSize / 1024)}KB, Compressed: ${Math.round(compressedData.imageSize / 1024)}KB`);
+                        resolve(compressedData);
+                    })
+                    .catch(error => {
+                        debugLog(`Compression failed, using original: ${error.message}`);
+                        // If compression fails, still try to send the original
+                        resolve({
+                            imageData: base64Data,
+                            imageName: imageName,
+                            imageSize: imageSize
                         });
-                } else {
-                    resolve({
-                        imageData: base64Data,
-                        imageName: imageName,
-                        imageSize: imageSize
                     });
-                }
             };
             
             reader.onerror = function() {
@@ -475,9 +471,9 @@ window.addEventListener('load', () => {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 
-                // Calculate new dimensions (max 800px width/height)
+                // Calculate new dimensions (max 600px width/height for better compression)
                 let { width, height } = img;
-                const maxSize = 800;
+                const maxSize = 600;
                 
                 if (width > height) {
                     if (width > maxSize) {
@@ -497,8 +493,8 @@ window.addEventListener('load', () => {
                 // Draw and compress
                 ctx.drawImage(img, 0, 0, width, height);
                 
-                // Convert to base64 with quality 0.8
-                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                // Convert to base64 with lower quality for smaller size
+                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
                 
                 // Calculate new size
                 const compressedSize = Math.ceil((compressedBase64.length * 3) / 4);

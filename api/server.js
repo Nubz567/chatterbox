@@ -740,9 +740,20 @@ app.post('/api/chat/send', async (req, res) => {
                 console.log('ERROR: Missing image data or name');
                 return res.status(400).json({ error: 'Image data and name are required for image messages' });
             }
-            if (imageSize && imageSize > 5 * 1024 * 1024) { // 5MB limit
-                console.log('ERROR: Image too large');
-                return res.status(400).json({ error: 'Image size must be less than 5MB' });
+            
+            // Check Base64 data size (more restrictive than file size)
+            const base64Size = imageData.length;
+            const maxBase64Size = 10 * 1024 * 1024; // 10MB for Base64 data
+            console.log(`Image Base64 size: ${Math.round(base64Size / 1024)}KB`);
+            
+            if (base64Size > maxBase64Size) {
+                console.log(`ERROR: Image Base64 data too large: ${Math.round(base64Size / 1024 / 1024)}MB`);
+                return res.status(400).json({ error: 'Image is too large. Please try a smaller image.' });
+            }
+            
+            if (imageSize && imageSize > 5 * 1024 * 1024) { // 5MB limit for original file
+                console.log('ERROR: Original image file too large');
+                return res.status(400).json({ error: 'Image file size must be less than 5MB' });
             }
     } else {
             if (!message || message.trim() === '') {
@@ -794,9 +805,23 @@ app.post('/api/chat/send', async (req, res) => {
         });
 
         // Save message to database
+        console.log('Attempting to save message to database...');
         const newMessage = new Message(messageObj);
-        await newMessage.save();
-        console.log('Message saved to database with ID:', newMessage._id);
+        
+        try {
+            await newMessage.save();
+            console.log('Message saved to database with ID:', newMessage._id);
+        } catch (saveError) {
+            console.error('Database save error:', saveError);
+            if (saveError.name === 'ValidationError') {
+                console.error('Validation errors:', saveError.errors);
+                return res.status(400).json({ error: 'Invalid message data: ' + Object.keys(saveError.errors).join(', ') });
+            } else if (saveError.name === 'MongoError' && saveError.code === 11000) {
+                return res.status(400).json({ error: 'Duplicate message detected' });
+            } else {
+                return res.status(500).json({ error: 'Failed to save message to database' });
+            }
+        }
 
         // Keep only the last MAX_MESSAGES messages by deleting older ones
         const messageCount = await Message.countDocuments({ groupId: groupId });
