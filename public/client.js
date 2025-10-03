@@ -69,6 +69,8 @@ window.addEventListener('load', () => {
     }
 
     debugLog('All required elements found');
+    debugLog(`Image upload button found: ${!!imageUploadButton}`);
+    debugLog(`Image input found: ${!!imageInput}`);
 
     // Emoji list
     const EMOJI_LIST = [
@@ -742,17 +744,27 @@ window.addEventListener('load', () => {
 
     // Handle image upload button
     if (imageUploadButton && imageInput) {
-        imageUploadButton.addEventListener('click', () => {
+        imageUploadButton.addEventListener('click', (e) => {
+            e.preventDefault();
             debugLog('Image upload button clicked');
+            debugLog('Triggering file input click');
             imageInput.click();
         });
+    } else {
+        debugLog('ERROR: Image upload button or input not found');
+        debugLog(`imageUploadButton: ${!!imageUploadButton}, imageInput: ${!!imageInput}`);
+    }
 
         imageInput.addEventListener('change', async (e) => {
+            debugLog('Image input change event triggered');
             const file = e.target.files[0];
-            if (!file) return;
+            if (!file) {
+                debugLog('No file selected');
+                return;
+            }
+            debugLog(`File selected: ${file.name}, size: ${file.size}, type: ${file.type}`);
 
             try {
-                debugLog(`Image selected: ${file.name} (${file.size} bytes)`);
                 
                 // Show loading state
                 const originalText = imageUploadButton.textContent;
