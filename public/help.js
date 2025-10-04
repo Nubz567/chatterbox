@@ -73,10 +73,12 @@ window.addEventListener('load', function() {
             <div class="help-section">
                 <h2>Tips & Tricks</h2>
                 <ul>
+                    <li>If something doesn't work, refresh the page</li>
                     <li>Use the emoji panel to add emojis to your messages</li>
                     <li>Keep your join codes private to maintain group security</li>
                     <li>You can be part of multiple groups simultaneously</li>
                     <li>Switch between group chat and PMs easily using the sidebar</li>
+                    <li>You can change your username and password in the options menu</li>
                 </ul>
             </div>
 
@@ -86,21 +88,19 @@ window.addEventListener('load', function() {
                 <div class="update-section">
                     <h3>Latest Features</h3>
                     <ul>
-                        <li>Added emoji support for messages</li>
-                        <li>Improved group management system</li>
-                        <li>Enhanced private messaging interface</li>
+                        <li>Added emojis for messages</li>
                         <li>Added real-time typing indicators</li>
                         <li>Added a help section (this one)</li>
+                        <li>Sending Pictures and videos</li>
                     </ul>
                 </div>
 
                 <div class="update-section">
                     <h3>Coming Soon</h3>
                     <ul>
-                        <li>Parental Controls</li>
-                        <li>Even more EMOJIS</li>
-                        <li>School Groups</li>
-                        <li>Sending Pictures and videos</li>
+                        <li>Even more emojis</li>
+                        <li>Delete messages</li>
+                        <li>User Bans</li>
                         <li>Voice messages</li>
                         <li>And more!</li>
                     </ul>
