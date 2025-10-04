@@ -1076,7 +1076,7 @@ window.addEventListener('load', () => {
                     if (messagesList) messagesList.style.display = 'block';
                     
                     debugLog(`Refresh complete. Loaded ${messages.length} messages one by one. Last ID: ${lastMessageId}`);
-    } else {
+        } else {
                     // Just hide loading indicator if no messages
                     if (messagesLoading) messagesLoading.style.display = 'none';
                     if (messagesList) messagesList.style.display = 'block';
@@ -1166,7 +1166,7 @@ window.addEventListener('load', () => {
                         if (messagesList) messagesList.style.display = 'block';
                         
                         debugLog(`Initial load complete. Loaded ${messages.length} messages one by one. Last ID: ${lastMessageId}`);
-                                    } else {
+    } else {
                     // Just hide loading indicator if no messages
                     if (messagesLoading) messagesLoading.style.display = 'none';
                     if (messagesList) messagesList.style.display = 'block';
@@ -1206,7 +1206,7 @@ window.addEventListener('load', () => {
             startPolling();
             
             debugLog('Chat initialization complete');
-        } catch (error) {
+            } catch (error) {
             debugLog(`ERROR during chat initialization: ${error.message}`);
         }
     }

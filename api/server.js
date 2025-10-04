@@ -630,14 +630,14 @@ app.post('/api/groups/join', async (req, res) => {
 app.get('/api/user/groups', async (req, res) => {
     try {
         await connectToDatabase();
-        if (!req.session.user || !req.session.user.email) {
-            return res.status(401).json({ error: 'User not authenticated' });
-        }
-        const userEmail = req.session.user.email;
-        
-        try {
-            const memberOfGroups = await Group.find({
-                members: userEmail,
+    if (!req.session.user || !req.session.user.email) {
+        return res.status(401).json({ error: 'User not authenticated' });
+    }
+    const userEmail = req.session.user.email;
+    
+    try {
+        const memberOfGroups = await Group.find({
+            members: userEmail,
                 archivedDueToUserDeletion: { $ne: true }
             });
             
@@ -660,8 +660,8 @@ app.get('/api/user/groups', async (req, res) => {
             
             res.status(200).json(groupsWithAdminUsernames);
 
-        } catch (error) {
-            console.error('Error fetching user groups:', error);
+    } catch (error) {
+        console.error('Error fetching user groups:', error);
             res.status(500).json({ error: 'An error occurred while fetching your groups.' });
         }
     } catch (error) {
