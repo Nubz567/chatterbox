@@ -263,6 +263,31 @@ body.has-fixed-logo {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* Style for logout button with class */
+.button-logout {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.button-logout:hover {
+    background: linear-gradient(135deg, #c0392b, #a93226);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.button-logout:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
 .timestamp {
     /* color: #03254eb9; Old color */
     color: rgba(0, 0, 0, 0.5); /* Softer, less prominent timestamp for other messages */
@@ -2099,6 +2124,15 @@ body.dark-theme #emoji-button {
 
 body.dark-theme #emoji-button:hover {
     background: #2980b9;
+}
+
+/* Dark theme support for logout button */
+body.dark-theme .button-logout {
+    background: linear-gradient(135deg, #c0392b, #a93226);
+}
+
+body.dark-theme .button-logout:hover {
+    background: linear-gradient(135deg, #a93226, #922b21);
 }
 
 body.dark-theme .image-preview-container {
