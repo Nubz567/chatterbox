@@ -811,7 +811,7 @@ app.post('/api/chat/send', async (req, res) => {
                 console.log('ERROR: Original image file too large');
                 return res.status(400).json({ error: 'Image file size must be less than 5MB' });
             }
-    } else {
+  } else {
             if (!message || message.trim() === '') {
                 console.log('ERROR: Missing text message');
                 return res.status(400).json({ error: 'Message text is required for text messages' });
@@ -848,7 +848,7 @@ app.post('/api/chat/send', async (req, res) => {
             messageObj.imageData = imageData;
             messageObj.imageName = imageName;
             messageObj.imageSize = imageSize;
-        } else {
+    } else {
             messageObj.text = message;
         }
 
@@ -874,7 +874,7 @@ app.post('/api/chat/send', async (req, res) => {
                 return res.status(400).json({ error: 'Invalid message data: ' + Object.keys(saveError.errors).join(', ') });
             } else if (saveError.name === 'MongoError' && saveError.code === 11000) {
                 return res.status(400).json({ error: 'Duplicate message detected' });
-            } else {
+    } else {
                 return res.status(500).json({ error: 'Failed to save message to database' });
             }
         }
@@ -982,7 +982,7 @@ app.get('/api/chat/messages/:groupId', async (req, res) => {
         })));
         
         res.json({ messages: transformedMessages });
-    } catch (error) {
+  } catch (error) {
         console.error('ERROR getting messages:', error);
         res.status(500).json({ error: 'Failed to get messages' });
     }
