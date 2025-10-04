@@ -206,6 +206,58 @@ app.get('/test', (req, res) => {
     });
 });
 
+// Health check endpoint
+app.get('/health', async (req, res) => {
+    try {
+        await connectToDatabase();
+        res.json({
+            status: 'healthy',
+            database: 'connected',
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Health check failed:', error);
+        res.status(500).json({
+            status: 'unhealthy',
+            database: 'disconnected',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// Database test endpoint
+app.get('/api/db-test', async (req, res) => {
+    try {
+        console.log('Testing database connection...');
+        await connectToDatabase();
+        
+        // Try a simple database operation
+        const userCount = await User.countDocuments();
+        const groupCount = await Group.countDocuments();
+        const messageCount = await Message.countDocuments();
+        
+        res.json({
+            status: 'success',
+            database: 'connected',
+            counts: {
+                users: userCount,
+                groups: groupCount,
+                messages: messageCount
+            },
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Database test failed:', error);
+        res.status(500).json({
+            status: 'error',
+            database: 'failed',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
 // Login routes
 app.get('/login', (req, res) => {
     console.log('Login page requested. Session data:', req.session);
@@ -713,6 +765,10 @@ app.post('/api/chat/send', async (req, res) => {
         console.log('Body:', req.body);
         console.log('User in session:', req.session.user);
         
+        // Ensure database connection
+    await connectToDatabase();
+        console.log('Database connection verified');
+        
         if (!req.session.user || !req.session.user.email) {
             console.log('ERROR: User not authenticated');
             return res.status(401).json({ error: 'Not authenticated' });
@@ -866,6 +922,10 @@ app.get('/api/chat/messages/:groupId', async (req, res) => {
         console.log('Params:', req.params);
         console.log('User in session:', req.session.user);
         
+        // Ensure database connection
+        await connectToDatabase();
+        console.log('Database connection verified for messages');
+        
         if (!req.session.user || !req.session.user.email) {
             console.log('ERROR: User not authenticated');
             return res.status(401).json({ error: 'Not authenticated' });
@@ -931,6 +991,15 @@ app.get('/api/chat/messages/:groupId', async (req, res) => {
 // API endpoint to get online users
 app.get('/api/chat/users/:groupId', async (req, res) => {
     try {
+        console.log('=== GET USERS REQUEST ===');
+        console.log('Session:', req.session);
+        console.log('Params:', req.params);
+        console.log('User in session:', req.session.user);
+        
+        // Ensure database connection
+        await connectToDatabase();
+        console.log('Database connection verified for users');
+        
         if (!req.session.user || !req.session.user.email) {
             return res.status(401).json({ error: 'Not authenticated' });
         }
@@ -980,9 +1049,11 @@ app.get('/api/chat/users/:groupId', async (req, res) => {
 // Error handling
 app.use((err, req, res, next) => {
     console.error('Express error:', err);
+    console.error('Error stack:', err.stack);
     res.status(500).json({ 
         error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong',
+        timestamp: new Date().toISOString()
     });
 });
 
