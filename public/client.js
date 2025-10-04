@@ -71,6 +71,57 @@ window.addEventListener('load', () => {
     debugLog('All required elements found');
     debugLog(`Image upload button found: ${!!imageUploadButton}`);
     debugLog(`Image input found: ${!!imageInput}`);
+    
+    // Make image upload test function available globally for debugging
+    window.testImageUpload = function() {
+        debugLog('Testing image upload functionality...');
+        if (imageUploadButton) {
+            debugLog('Image upload button exists, clicking it...');
+            imageUploadButton.click();
+        } else {
+            debugLog('ERROR: Image upload button not found');
+        }
+    };
+    
+    // Test function to create and send a simple test image
+    window.testImageSend = async function() {
+        debugLog('Creating test image...');
+        try {
+            // Create a simple test image
+            const canvas = document.createElement('canvas');
+            canvas.width = 100;
+            canvas.height = 100;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(0, 0, 100, 100);
+            ctx.fillStyle = 'white';
+            ctx.font = '16px Arial';
+            ctx.fillText('TEST', 30, 55);
+            
+            const testImageData = canvas.toDataURL('image/jpeg', 0.8);
+            const testImageSize = Math.ceil((testImageData.length * 3) / 4);
+            
+            debugLog(`Test image created: ${testImageSize} bytes`);
+            
+            const imageData = {
+                imageData: testImageData,
+                imageName: 'test-image.jpg',
+                imageSize: testImageSize
+            };
+            
+            debugLog('Sending test image...');
+            const sentMessage = await sendMessage(null, imageData);
+            if (sentMessage) {
+                debugLog('Test image sent successfully!');
+                displayMessage(sentMessage);
+                lastMessageId = sentMessage.id;
+            } else {
+                debugLog('ERROR: Failed to send test image');
+            }
+        } catch (error) {
+            debugLog(`ERROR in test image send: ${error.message}`);
+        }
+    };
 
     // Emoji list
     const EMOJI_LIST = [
@@ -740,15 +791,28 @@ window.addEventListener('load', () => {
 
     // Handle image upload button
     if (imageUploadButton && imageInput) {
+        debugLog('Setting up image upload button event listener');
         imageUploadButton.addEventListener('click', (e) => {
             e.preventDefault();
             debugLog('Image upload button clicked');
             debugLog('Triggering file input click');
-            imageInput.click();
+            try {
+                imageInput.click();
+                debugLog('File input click triggered successfully');
+            } catch (error) {
+                debugLog(`ERROR triggering file input: ${error.message}`);
+            }
         });
+        debugLog('Image upload button event listener set up successfully');
     } else {
         debugLog('ERROR: Image upload button or input not found');
         debugLog(`imageUploadButton: ${!!imageUploadButton}, imageInput: ${!!imageInput}`);
+        if (imageUploadButton) {
+            debugLog('Image upload button element:', imageUploadButton);
+        }
+        if (imageInput) {
+            debugLog('Image input element:', imageInput);
+        }
     }
 
     if (imageInput) {
