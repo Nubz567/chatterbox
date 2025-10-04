@@ -38,6 +38,7 @@ window.addEventListener('load', () => {
     const modalClose = document.querySelector('.image-modal-close');
     const refreshMessagesButton = document.getElementById('refresh-messages');
     const refreshMessagesPersistent = document.getElementById('refresh-messages-persistent');
+    const groupNameElement = document.getElementById('group-name');
 
     // Check if all required elements exist
     const requiredElements = {
@@ -56,7 +57,8 @@ window.addEventListener('load', () => {
         modalImage,
         modalClose,
         refreshMessagesButton,
-        refreshMessagesPersistent
+        refreshMessagesPersistent,
+        groupNameElement
     };
 
     const missingElements = Object.entries(requiredElements)
@@ -130,6 +132,49 @@ window.addEventListener('load', () => {
             }
         } catch (error) {
             debugLog(`ERROR updating username display: ${error.message}`);
+        }
+    }
+
+    // Fetch and update group name
+    async function updateGroupName() {
+        try {
+            if (!currentGroupId) {
+                debugLog('ERROR: No group ID available for fetching group name');
+                return;
+            }
+
+            debugLog(`Fetching group information for ID: ${currentGroupId}`);
+            const response = await fetch(`/api/groups/${currentGroupId}`, {
+                credentials: 'include',
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            });
+
+            if (response.ok) {
+                const groupData = await response.json();
+                if (groupData && groupData.name) {
+                    if (groupNameElement) {
+                        groupNameElement.textContent = groupData.name;
+                        debugLog(`Group name updated: ${groupData.name}`);
+                    }
+                } else {
+                    debugLog('ERROR: Group data or name not found in response');
+                    if (groupNameElement) {
+                        groupNameElement.textContent = 'Unknown Group';
+                    }
+                }
+            } else {
+                debugLog(`ERROR: Failed to fetch group info - Status: ${response.status}`);
+                if (groupNameElement) {
+                    groupNameElement.textContent = 'Group Chat';
+                }
+            }
+        } catch (error) {
+            debugLog(`ERROR fetching group name: ${error.message}`);
+            if (groupNameElement) {
+                groupNameElement.textContent = 'Group Chat';
+            }
         }
     }
 
@@ -1088,6 +1133,7 @@ window.addEventListener('load', () => {
         
         try {
             await fetchUserInfo();
+            await updateGroupName();
             initializeEmojiPanel();
             
             // Load initial messages with retry
