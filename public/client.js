@@ -1073,27 +1073,6 @@ window.addEventListener('load', () => {
 
 
 
-    // Handle logout
-    const logoutForm = document.querySelector('#logout-form');
-    if (logoutForm) {
-        logoutForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            debugLog('Logout form submitted');
-            try {
-                const response = await fetch('/logout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                });
-                const result = await response.json();
-                if (result.redirectTo) {
-                    window.location.href = result.redirectTo;
-                }
-            } catch (error) {
-                debugLog(`ERROR during logout: ${error.message}`);
-                window.location.href = '/';
-            }
-        });
-    }
 
     // Utility functions
     function escapeHTML(str) {

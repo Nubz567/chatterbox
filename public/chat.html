@@ -18,17 +18,12 @@
     </div>
 
     <div id="chat-app-container">
-        <!-- Top navigation bar with buttons -->
-        <div style="position: fixed; top: 130px; left: 0; right: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 1000; border-bottom: 1px solid rgba(0,0,0,0.1);">
-            <div style="display: flex; gap: 10px;">
-                <button type="button" class="options-button" style="background: #3498db; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;">
-                    <span style="font-size: 16px;">💬</span>
-                    <span>Chat Options</span>
-                </button>
-                <form action="/logout" method="POST" id="logout-form" style="margin: 0;">
-                    <button type="submit" style="background: #e74c3c; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">Logout</button>
-                </form>
-            </div>
+        <!-- Top navigation bar with chat options button -->
+        <div style="position: fixed; top: 130px; left: 0; right: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 10px 20px; display: flex; justify-content: flex-start; align-items: center; z-index: 1000; border-bottom: 1px solid rgba(0,0,0,0.1);">
+            <button type="button" class="options-button" style="background: #3498db; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                <span style="font-size: 16px;">💬</span>
+                <span>Chat Options</span>
+            </button>
         </div>
         
         <!-- Username display in top right corner -->
