@@ -171,8 +171,8 @@ body.has-fixed-logo {
 
 #messages li.other-message {
     /* background: linear-gradient(135deg, #e3f2fd, #bbdefb); Old blue */
-    background: linear-gradient(135deg, #f0f2f5, #e6e9ed); /* Softer, modern grey */
-    color: #333; /* Darker text for better contrast on light grey */
+    background: linear-gradient(135deg, #2c3e50, #34495e); /* Dark background for other users' messages */
+    color: #ffffff; /* White text for contrast on dark background */
     margin-right: auto;
     align-self: flex-start;
     border-radius: 15px 15px 15px 5px; /* More bubbly */
@@ -401,7 +401,8 @@ body.has-fixed-logo {
 }
 
 .messages li.other-message {
-    background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+    background: linear-gradient(135deg, #2c3e50, #34495e); /* Dark background for other users' messages */
+    color: #ffffff; /* White text for contrast on dark background */
     margin-right: auto;
     align-self: flex-start;
 }
