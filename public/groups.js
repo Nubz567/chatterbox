@@ -93,7 +93,7 @@ window.addEventListener('load', () => {
                 listItem.innerHTML = `
                     <div class="group-info-main">
                         <strong>${escapeHTML(group.name)}</strong>
-                        <span class="admin-info">(Admin: ${escapeHTML(group.adminEmail)})</span>
+                        <span class="admin-info">(Admin: ${escapeHTML(group.adminUsername || group.adminEmail)})</span>
                     </div>
                     <div class="join-code-display">
                         Join Code: <code>${escapeHTML(group.joinCode)}</code>

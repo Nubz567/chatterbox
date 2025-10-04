@@ -630,21 +630,38 @@ app.post('/api/groups/join', async (req, res) => {
 app.get('/api/user/groups', async (req, res) => {
     try {
         await connectToDatabase();
-    if (!req.session.user || !req.session.user.email) {
-        return res.status(401).json({ error: 'User not authenticated' });
-    }
-    const userEmail = req.session.user.email;
-    
-    try {
-        const memberOfGroups = await Group.find({
-            members: userEmail,
-                archivedDueToUserDeletion: { $ne: true }
-        });
+        if (!req.session.user || !req.session.user.email) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+        const userEmail = req.session.user.email;
         
-    res.status(200).json(memberOfGroups);
+        try {
+            const memberOfGroups = await Group.find({
+                members: userEmail,
+                archivedDueToUserDeletion: { $ne: true }
+            });
+            
+            // Populate admin usernames for each group
+            const groupsWithAdminUsernames = await Promise.all(
+                memberOfGroups.map(async (group) => {
+                    try {
+                        const adminUser = await User.findOne({ email: group.adminEmail });
+                        const groupObj = group.toObject();
+                        groupObj.adminUsername = adminUser ? adminUser.username : 'Unknown User';
+                        return groupObj;
+                    } catch (error) {
+                        console.error(`Error fetching admin username for group ${group._id}:`, error);
+                        const groupObj = group.toObject();
+                        groupObj.adminUsername = 'Unknown User';
+                        return groupObj;
+                    }
+                })
+            );
+            
+            res.status(200).json(groupsWithAdminUsernames);
 
-    } catch (error) {
-        console.error('Error fetching user groups:', error);
+        } catch (error) {
+            console.error('Error fetching user groups:', error);
             res.status(500).json({ error: 'An error occurred while fetching your groups.' });
         }
     } catch (error) {
