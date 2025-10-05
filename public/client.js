@@ -111,7 +111,7 @@ window.addEventListener('load', () => {
                         messageInput.value += emoji;
                         messageInput.focus();
                     }
-                    emojiPanel.classList.add('hidden');
+                    // Keep the emoji panel open until the user explicitly closes it
                 });
                 emojiPanel.appendChild(emojiSpan);
             });

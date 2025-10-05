@@ -89,7 +89,7 @@ window.addEventListener('load', function() {
                     <h3>Latest Features</h3>
                     <ul>
                         <li>Added emojis for messages</li>
-                        <li>Added real-time typing indicators</li>
+                        <li>Added a new logo</li>
                         <li>Added a help section (this one)</li>
                         <li>Sending Pictures and videos</li>
                     </ul>
