@@ -255,7 +255,7 @@ window.addEventListener('load', () => {
                 } else if (videoData) {
                     // Check if video data is too large for JSON request
                     const videoDataSize = videoData.videoData.length;
-                    if (videoDataSize > 10 * 1024 * 1024) { // 10MB limit for JSON
+                    if (videoDataSize > 150 * 1024 * 1024) { // 150MB limit for JSON (100MB file becomes ~133MB Base64)
                         debugLog(`ERROR: Video data too large for JSON request: ${Math.round(videoDataSize / 1024 / 1024)}MB`);
                         throw new Error('Video is too large. Please try a smaller video.');
                     }
@@ -613,9 +613,9 @@ window.addEventListener('load', () => {
                 const videoSize = file.size;
                 const videoName = file.name;
                 
-                // Validate file size (5MB limit)
-                if (videoSize > 5 * 1024 * 1024) {
-                    reject(new Error('Video size must be less than 5MB'));
+                // Validate file size (100MB limit)
+                if (videoSize > 100 * 1024 * 1024) {
+                    reject(new Error('Video size must be less than 100MB'));
                     return;
                 }
     

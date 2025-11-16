@@ -97,8 +97,8 @@ const sessionMiddleware = session({
 });
 
 // Basic middleware
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+app.use(express.json({ limit: '150mb' })); // Increased for video support (100MB files become ~133MB Base64)
+app.use(express.urlencoded({ extended: false, limit: '150mb' }));
 app.use(sessionMiddleware);
 
 // Serve static files from the "public" directory
@@ -843,7 +843,7 @@ app.post('/api/chat/send', async (req, res) => {
             
             // Check Base64 data size (more restrictive than file size)
             const base64Size = videoData.length;
-            const maxBase64Size = 10 * 1024 * 1024; // 10MB for Base64 data
+            const maxBase64Size = 150 * 1024 * 1024; // 150MB for Base64 data (100MB file becomes ~133MB Base64)
             console.log(`Video Base64 size: ${Math.round(base64Size / 1024)}KB`);
             
             if (base64Size > maxBase64Size) {
@@ -851,9 +851,9 @@ app.post('/api/chat/send', async (req, res) => {
                 return res.status(400).json({ error: 'Video is too large. Please try a smaller video.' });
             }
             
-            if (videoSize && videoSize > 5 * 1024 * 1024) { // 5MB limit for original file
+            if (videoSize && videoSize > 100 * 1024 * 1024) { // 100MB limit for original file
                 console.log('ERROR: Original video file too large');
-                return res.status(400).json({ error: 'Video file size must be less than 5MB' });
+                return res.status(400).json({ error: 'Video file size must be less than 100MB' });
             }
   } else {
             if (!message || message.trim() === '') {
