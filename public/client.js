@@ -501,6 +501,18 @@ window.addEventListener('load', () => {
             item.classList.add('other-message');
         }
         
+        item.setAttribute('data-message-id', messageData.id);
+        item.setAttribute('data-message-timestamp', messageData.timestamp);
+        item.setAttribute('data-message-email', messageData.email);
+        
+        // Add right-click context menu for user's own messages
+        if (currentUserEmail && messageData.email === currentUserEmail) {
+            item.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                showMessageContextMenu(e, item, messageData);
+            });
+        }
+        
         messagesList.appendChild(item);
         messagesList.scrollTop = messagesList.scrollHeight;
             debugLog('Message displayed successfully');
@@ -1380,6 +1392,92 @@ window.addEventListener('load', () => {
                 document.body.removeChild(modalOverlay);
             }
         });
+    }
+
+    // Show message context menu
+    function showMessageContextMenu(event, messageItem, messageData) {
+        // Remove any existing context menu
+        const existingMenu = document.getElementById('message-context-menu');
+        if (existingMenu) {
+            document.body.removeChild(existingMenu);
+        }
+        
+        // Create context menu
+        const contextMenu = document.createElement('div');
+        contextMenu.id = 'message-context-menu';
+        contextMenu.style.cssText = `
+            position: fixed;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 10000;
+            min-width: 150px;
+            padding: 4px 0;
+        `;
+        
+        // Delete message option
+        const deleteOption = document.createElement('div');
+        deleteOption.className = 'context-menu-item';
+        deleteOption.textContent = 'Delete Message';
+        deleteOption.style.cssText = `
+            padding: 8px 16px;
+            cursor: pointer;
+            color: #e74c3c;
+            transition: background 0.2s;
+        `;
+        deleteOption.addEventListener('mouseenter', () => {
+            deleteOption.style.background = '#f5f5f5';
+        });
+        deleteOption.addEventListener('mouseleave', () => {
+            deleteOption.style.background = 'transparent';
+        });
+        deleteOption.addEventListener('click', () => {
+            handleDeleteMessage(messageData.id, messageItem);
+            document.body.removeChild(contextMenu);
+        });
+        
+        contextMenu.appendChild(deleteOption);
+        document.body.appendChild(contextMenu);
+        
+        // Position menu near cursor
+        const x = event.clientX;
+        const y = event.clientY;
+        contextMenu.style.left = `${x}px`;
+        contextMenu.style.top = `${y}px`;
+        
+        // Adjust if menu goes off screen
+        setTimeout(() => {
+            const rect = contextMenu.getBoundingClientRect();
+            if (rect.right > window.innerWidth) {
+                contextMenu.style.left = `${window.innerWidth - rect.width - 10}px`;
+            }
+            if (rect.bottom > window.innerHeight) {
+                contextMenu.style.top = `${window.innerHeight - rect.height - 10}px`;
+            }
+        }, 0);
+        
+        // Close menu when clicking outside
+        const closeMenu = (e) => {
+            if (!contextMenu.contains(e.target) && e.target !== messageItem) {
+                if (document.body.contains(contextMenu)) {
+                    document.body.removeChild(contextMenu);
+                }
+                document.removeEventListener('click', closeMenu);
+            }
+        };
+        
+        // Close on click outside (after a small delay to allow menu click)
+        setTimeout(() => {
+            document.addEventListener('click', closeMenu);
+        }, 100);
+    }
+    
+    // Handle delete message (placeholder for now)
+    function handleDeleteMessage(messageId, messageItem) {
+        debugLog(`Delete message requested for ID: ${messageId}`);
+        // TODO: Implement delete logic with 3-minute time limit
+        alert('Delete message functionality will be implemented next');
     }
 
     // Utility functions

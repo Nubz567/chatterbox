@@ -2217,6 +2217,33 @@ body.dark-theme .button-logout {
     background: linear-gradient(135deg, #c0392b, #a93226);
 }
 
+/* Message Context Menu Styles */
+#message-context-menu {
+    font-family: Arial, sans-serif;
+    user-select: none;
+}
+
+.context-menu-item {
+    font-size: 14px;
+}
+
+.context-menu-item:hover {
+    background: #f5f5f5 !important;
+}
+
+body.dark-theme #message-context-menu {
+    background: #4a4a4a;
+    border-color: #666;
+}
+
+body.dark-theme .context-menu-item {
+    color: #ecf0f1;
+}
+
+body.dark-theme .context-menu-item:hover {
+    background: #5a5a5a !important;
+}
+
 body.dark-theme .button-logout:hover {
     background: linear-gradient(135deg, #a93226, #922b21);
 }
