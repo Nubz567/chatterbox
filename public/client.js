@@ -229,7 +229,7 @@ window.addEventListener('load', () => {
                     `Sending image message (attempt ${attempt}/${MAX_RETRIES}): ${imageData.imageName}` :
                     (videoData ? 
                         `Sending video message (attempt ${attempt}/${MAX_RETRIES}): ${videoData.videoName}` :
-                        `Sending message (attempt ${attempt}/${MAX_RETRIES}): ${message.substring(0, 50)}...`);
+                        `Sending message (attempt ${attempt}/${MAX_RETRIES}): ${message ? message.substring(0, 50) : '(empty)'}...`);
                 
                 debugLog(logMessage);
                 
@@ -275,14 +275,33 @@ window.addEventListener('load', () => {
                     });
                 }
                 
-                console.log('Sending request body:', requestBody);
+                // Log request body without the actual data to avoid console issues with large files
+                const logBody = { ...requestBody };
+                if (logBody.videoData) {
+                    logBody.videoData = `[Video Data: ${Math.round(logBody.videoData.length / 1024)}KB]`;
+                }
+                if (logBody.imageData) {
+                    logBody.imageData = `[Image Data: ${Math.round(logBody.imageData.length / 1024)}KB]`;
+                }
+                console.log('Sending request body:', logBody);
+                debugLog(`Stringifying request body (video data size: ${videoData ? Math.round(videoData.videoData.length / 1024 / 1024) : 0}MB)...`);
+                
+                let requestBodyString;
+                try {
+                    requestBodyString = JSON.stringify(requestBody);
+                    debugLog(`Request body stringified successfully. Size: ${Math.round(requestBodyString.length / 1024 / 1024)}MB`);
+                } catch (stringifyError) {
+                    debugLog(`ERROR: Failed to stringify request body: ${stringifyError.message}`);
+                    throw new Error('Failed to prepare video for sending. The video might be too large.');
+                }
+                
                 const response = await fetch('/api/chat/send', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Cache-Control': 'no-cache'
                     },
-                    body: JSON.stringify(requestBody),
+                    body: requestBodyString,
                     credentials: 'include'
                 });
 
@@ -972,16 +991,22 @@ window.addEventListener('load', () => {
             debugLog(`File selected: ${file.name}, size: ${file.size}, type: ${file.type}`);
 
             try {
+                if (!videoUploadButton) {
+                    throw new Error('Video upload button not found');
+                }
                 
                 // Show loading state
-                const originalText = videoUploadButton.textContent;
+                const originalText = videoUploadButton.textContent || '🎥';
                 videoUploadButton.textContent = '⏳';
                 videoUploadButton.disabled = true;
 
                 // Process video
+                debugLog(`Processing video: ${file.name} (${Math.round(file.size / 1024 / 1024)}MB)`);
                 const videoData = await handleVideoUpload(file);
+                debugLog(`Video processed successfully. Base64 size: ${Math.round(videoData.videoData.length / 1024 / 1024)}MB`);
                 
                 // Send video message
+                debugLog('Sending video message to server...');
                 const sentMessage = await sendMessage(null, null, videoData);
                 if (sentMessage) {
                     debugLog('Video sent successfully');
@@ -990,25 +1015,34 @@ window.addEventListener('load', () => {
                     // Update lastMessageId to prevent duplicate from polling
                     lastMessageId = sentMessage.id;
                 } else {
-                    debugLog('ERROR: Failed to send video');
+                    debugLog('ERROR: Failed to send video - sendMessage returned null');
                     alert('Failed to send video. Please try again.');
                 }
 
                 // Reset button state
-                videoUploadButton.textContent = originalText;
-                videoUploadButton.disabled = false;
+                if (videoUploadButton) {
+                    videoUploadButton.textContent = originalText;
+                    videoUploadButton.disabled = false;
+                }
                 
                 // Clear file input
-                videoInput.value = '';
+                if (videoInput) {
+                    videoInput.value = '';
+                }
                 
             } catch (error) {
                 debugLog(`ERROR uploading video: ${error.message}`);
+                debugLog(`Error stack: ${error.stack}`);
                 alert(`Error uploading video: ${error.message}`);
                 
                 // Reset button state
-                videoUploadButton.textContent = originalText;
-                videoUploadButton.disabled = false;
-                videoInput.value = '';
+                if (videoUploadButton) {
+                    videoUploadButton.textContent = '🎥';
+                    videoUploadButton.disabled = false;
+                }
+                if (videoInput) {
+                    videoInput.value = '';
+                }
             }
         });
     }
