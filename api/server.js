@@ -57,6 +57,21 @@ const groupSchema = new mongoose.Schema({
 });
 const Group = mongoose.model('Group', groupSchema);
 
+const banSchema = new mongoose.Schema({
+    userId: { type: String, required: true }, // User email
+    groupId: { type: String, required: true },
+    bannedBy: { type: String, required: true }, // Admin email who banned
+    banType: { type: String, enum: ['permanent', 'temporary'], default: 'permanent' },
+    expiresAt: { type: Date }, // null for permanent bans
+    createdAt: { type: Date, default: Date.now }
+});
+
+// Index for efficient ban lookups
+banSchema.index({ userId: 1, groupId: 1 });
+banSchema.index({ expiresAt: 1 }); // For cleanup of expired temporary bans
+
+const Ban = mongoose.model('Ban', banSchema);
+
 const messageSchema = new mongoose.Schema({
     groupId: { type: String, required: true },
     user: { type: String, required: true },
@@ -627,6 +642,149 @@ app.post('/api/groups/join', async (req, res) => {
     }
 });
 
+// API endpoint to ban a user from a group
+app.post('/api/groups/ban', async (req, res) => {
+    try {
+        await connectToDatabase();
+        if (!req.session.user || !req.session.user.email) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        const { groupId, userEmail, banType, durationDays } = req.body;
+        
+        if (!groupId || !userEmail) {
+            return res.status(400).json({ error: 'Group ID and user email are required' });
+        }
+
+        // Verify the requester is the admin of the group
+        const group = await Group.findOne({ id: groupId });
+        if (!group) {
+            return res.status(404).json({ error: 'Group not found' });
+        }
+
+        if (group.adminEmail !== req.session.user.email) {
+            return res.status(403).json({ error: 'Only the group admin can ban users' });
+        }
+
+        // Cannot ban yourself
+        if (userEmail === req.session.user.email) {
+            return res.status(400).json({ error: 'You cannot ban yourself' });
+        }
+
+        // Check if user is already banned
+        const existingBan = await Ban.findOne({ userId: userEmail, groupId: groupId });
+        if (existingBan) {
+            // Check if it's a temporary ban that has expired
+            if (existingBan.banType === 'temporary' && existingBan.expiresAt && existingBan.expiresAt < new Date()) {
+                // Remove expired ban and create new one
+                await Ban.deleteOne({ _id: existingBan._id });
+            } else {
+                return res.status(400).json({ error: 'User is already banned from this group' });
+            }
+        }
+
+        // Create ban
+        const banData = {
+            userId: userEmail,
+            groupId: groupId,
+            bannedBy: req.session.user.email,
+            banType: banType || 'permanent'
+        };
+
+        if (banType === 'temporary' && durationDays) {
+            const expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + parseInt(durationDays));
+            banData.expiresAt = expiresAt;
+        }
+
+        const newBan = new Ban(banData);
+        await newBan.save();
+
+        console.log(`User ${userEmail} banned from group ${groupId} by ${req.session.user.email}`);
+        res.status(200).json({ 
+            success: true, 
+            message: 'User banned successfully',
+            ban: {
+                userId: newBan.userId,
+                groupId: newBan.groupId,
+                banType: newBan.banType,
+                expiresAt: newBan.expiresAt,
+                createdAt: newBan.createdAt
+            }
+        });
+    } catch (error) {
+        console.error('Error banning user:', error);
+        res.status(500).json({ error: 'An error occurred while banning the user' });
+    }
+});
+
+// API endpoint to unban a user from a group
+app.post('/api/groups/unban', async (req, res) => {
+    try {
+        await connectToDatabase();
+        if (!req.session.user || !req.session.user.email) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        const { groupId, userEmail } = req.body;
+        
+        if (!groupId || !userEmail) {
+            return res.status(400).json({ error: 'Group ID and user email are required' });
+        }
+
+        // Verify the requester is the admin of the group
+        const group = await Group.findOne({ id: groupId });
+        if (!group) {
+            return res.status(404).json({ error: 'Group not found' });
+        }
+
+        if (group.adminEmail !== req.session.user.email) {
+            return res.status(403).json({ error: 'Only the group admin can unban users' });
+        }
+
+        // Remove ban
+        const result = await Ban.deleteOne({ userId: userEmail, groupId: groupId });
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ error: 'User is not banned from this group' });
+        }
+
+        console.log(`User ${userEmail} unbanned from group ${groupId} by ${req.session.user.email}`);
+        res.status(200).json({ success: true, message: 'User unbanned successfully' });
+    } catch (error) {
+        console.error('Error unbanning user:', error);
+        res.status(500).json({ error: 'An error occurred while unbanning the user' });
+    }
+});
+
+// API endpoint to check if a user is banned from a group
+app.get('/api/groups/banned/:groupId/:userEmail', async (req, res) => {
+    try {
+        await connectToDatabase();
+        if (!req.session.user || !req.session.user.email) {
+            return res.status(401).json({ error: 'User not authenticated' });
+        }
+
+        const { groupId, userEmail } = req.params;
+        const ban = await isUserBanned(userEmail, groupId);
+
+        if (ban) {
+            res.status(200).json({ 
+                banned: true,
+                banType: ban.banType,
+                expiresAt: ban.expiresAt,
+                bannedBy: ban.bannedBy,
+                createdAt: ban.createdAt
+            });
+        } else {
+            res.status(200).json({ banned: false });
+        }
+    } catch (error) {
+        console.error('Error checking ban status:', error);
+        res.status(500).json({ error: 'An error occurred while checking ban status' });
+    }
+});
+
 app.get('/api/user/groups', async (req, res) => {
     try {
         await connectToDatabase();
@@ -774,6 +932,25 @@ app.get('/chat', async (req, res) => {
 
 const MAX_MESSAGES = 100;
 
+// Helper function to check if user is banned from a group
+async function isUserBanned(userEmail, groupId) {
+    try {
+        await connectToDatabase();
+        const ban = await Ban.findOne({
+            userId: userEmail,
+            groupId: groupId,
+            $or: [
+                { banType: 'permanent' },
+                { banType: 'temporary', expiresAt: { $gt: new Date() } }
+            ]
+        });
+        return ban;
+    } catch (error) {
+        console.error('Error checking ban status:', error);
+        return null;
+    }
+}
+
 // API endpoint to send a message
 app.post('/api/chat/send', async (req, res) => {
     try {
@@ -805,6 +982,31 @@ app.post('/api/chat/send', async (req, res) => {
         if (!groupId) {
             console.log('ERROR: Missing groupId');
             return res.status(400).json({ error: 'GroupId is required' });
+        }
+
+        // Verify user is member of the group
+        console.log('Looking up group:', groupId);
+        const sendGroup = await Group.findOne({ id: groupId });
+        console.log('Group found:', !!sendGroup);
+        if (sendGroup) {
+            console.log('Group members:', sendGroup.members);
+            console.log('User email:', req.session.user.email);
+            console.log('User is member:', sendGroup.members.includes(req.session.user.email));
+        }
+        
+        if (!sendGroup || !sendGroup.members.includes(req.session.user.email)) {
+            console.log('ERROR: Not a member of this group');
+            return res.status(403).json({ error: 'Not a member of this group' });
+        }
+
+        // Check if user is banned from this group
+        const ban = await isUserBanned(req.session.user.email, groupId);
+        if (ban) {
+            console.log('ERROR: User is banned from this group');
+            const banMessage = ban.banType === 'temporary' && ban.expiresAt
+                ? `You have been banned from this group until ${new Date(ban.expiresAt).toLocaleString()}`
+                : 'You have been banned from this group';
+            return res.status(403).json({ error: banMessage, banned: true });
         }
 
         // Validate message type and content
@@ -1070,7 +1272,10 @@ app.get('/api/chat/users/:groupId', async (req, res) => {
         });
 
         console.log('Returning users:', users);
-        res.json({ users });
+        res.json({ 
+            users,
+            adminEmail: group.adminEmail // Include admin email so frontend knows who can ban
+        });
     } catch (error) {
         console.error('Error getting users:', error);
         res.status(500).json({ error: 'Failed to get users' });

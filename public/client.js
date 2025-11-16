@@ -1,6 +1,7 @@
 let currentGroupId = null;
 let currentUserEmail = null;
 let currentUsername = null;
+let currentGroupAdminEmail = null; // Store group admin email
 let lastMessageId = null;
 let pollInterval = null;
 let messagePollInterval = null;
@@ -308,17 +309,30 @@ window.addEventListener('load', () => {
                     }
                 } else {
                     let errorText = '';
+                    let errorData = null;
                     try {
                         errorText = await response.text();
+                        try {
+                            errorData = JSON.parse(errorText);
+                        } catch (e) {
+                            // Not JSON, use as text
+                        }
                         debugLog(`ERROR: Failed to send message - Status: ${response.status}, Response: ${errorText}`);
                     } catch (textError) {
                         debugLog(`ERROR: Failed to read error response text: ${textError.message}`);
                         errorText = `HTTP ${response.status} Error`;
                     }
                     
+                    // Check if user is banned
+                    if (errorData && errorData.banned) {
+                        debugLog('User is banned from this group');
+                        alert(errorData.error || 'You have been banned from this group');
+                        throw new Error('Banned from group');
+                    }
+                    
                     if (attempt === MAX_RETRIES) {
                         debugLog('ERROR: Max retries reached for message send');
-                        throw new Error(`Failed to send: ${errorText}`);
+                        throw new Error(errorData?.error || errorText || `Failed to send: HTTP ${response.status}`);
                     }
                     await new Promise(resolve => setTimeout(resolve, 500 * attempt));
                 }
@@ -401,6 +415,10 @@ window.addEventListener('load', () => {
                 if (response.ok) {
                     const data = await response.json();
                     const users = data.users || [];
+                    if (data.adminEmail) {
+                        currentGroupAdminEmail = data.adminEmail;
+                        debugLog(`Group admin email: ${currentGroupAdminEmail}`);
+                    }
                     debugLog(`Users fetched successfully: ${users.length} users`);
                     return users;
                 } else {
@@ -633,10 +651,33 @@ window.addEventListener('load', () => {
             users.forEach(user => {
                 const userItem = document.createElement('li');
                 userItem.className = 'user-item';
-                userItem.innerHTML = `
+                userItem.setAttribute('data-user-email', user.email);
+                
+                const userContent = document.createElement('div');
+                userContent.style.cssText = 'display: flex; align-items: center; justify-content: space-between; width: 100%;';
+                
+                const userInfo = document.createElement('div');
+                userInfo.style.cssText = 'display: flex; align-items: center; gap: 8px; flex: 1;';
+                userInfo.innerHTML = `
                     <span class="user-name">${escapeHTML(user.username)}</span>
                     <span class="online-status ${user.online ? 'online' : 'offline'}">●</span>
                 `;
+                userContent.appendChild(userInfo);
+                
+                // Add ban button if current user is admin and this is not the admin themselves
+                if (currentUserEmail === currentGroupAdminEmail && user.email !== currentUserEmail) {
+                    const banButton = document.createElement('button');
+                    banButton.className = 'ban-user-button';
+                    banButton.textContent = '🚫';
+                    banButton.title = 'Ban User';
+                    banButton.style.cssText = 'background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 8px;';
+                    banButton.addEventListener('click', () => {
+                        showBanModal(user.email, user.username);
+                    });
+                    userContent.appendChild(banButton);
+                }
+                
+                userItem.appendChild(userContent);
                 userList.appendChild(userItem);
             });
             
@@ -1163,6 +1204,114 @@ window.addEventListener('load', () => {
 
 
 
+
+    // Show ban modal
+    function showBanModal(userEmail, username) {
+        // Create modal overlay
+        const modalOverlay = document.createElement('div');
+        modalOverlay.id = 'ban-modal-overlay';
+        modalOverlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;';
+        
+        // Create modal content
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = 'background: white; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
+        
+        modalContent.innerHTML = `
+            <h3 style="margin-top: 0;">Ban User: ${escapeHTML(username)}</h3>
+            <p>Are you sure you want to ban this user from this group?</p>
+            <div style="margin: 15px 0;">
+                <label style="display: block; margin-bottom: 10px;">
+                    <input type="radio" name="banType" value="permanent" checked> Permanent Ban
+                </label>
+                <label style="display: block; margin-bottom: 10px;">
+                    <input type="radio" name="banType" value="temporary"> Temporary Ban
+                </label>
+                <div id="duration-input" style="display: none; margin-top: 10px;">
+                    <label>Duration (days):</label>
+                    <input type="number" id="ban-duration" min="1" max="365" value="7" style="width: 100px; margin-left: 10px; padding: 4px;">
+                </div>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="ban-cancel-btn" style="padding: 8px 16px; background: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer;">Cancel</button>
+                <button id="ban-confirm-btn" style="padding: 8px 16px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer;">Ban User</button>
+            </div>
+        `;
+        
+        modalOverlay.appendChild(modalContent);
+        document.body.appendChild(modalOverlay);
+        
+        // Handle ban type change
+        const banTypeInputs = modalContent.querySelectorAll('input[name="banType"]');
+        const durationInput = modalContent.querySelector('#ban-duration');
+        const durationDiv = modalContent.querySelector('#duration-input');
+        
+        banTypeInputs.forEach(input => {
+            input.addEventListener('change', () => {
+                if (input.value === 'temporary') {
+                    durationDiv.style.display = 'block';
+                } else {
+                    durationDiv.style.display = 'none';
+                }
+            });
+        });
+        
+        // Handle cancel
+        const cancelBtn = modalContent.querySelector('#ban-cancel-btn');
+        cancelBtn.addEventListener('click', () => {
+            document.body.removeChild(modalOverlay);
+        });
+        
+        // Handle confirm
+        const confirmBtn = modalContent.querySelector('#ban-confirm-btn');
+        confirmBtn.addEventListener('click', async () => {
+            const selectedBanType = modalContent.querySelector('input[name="banType"]:checked').value;
+            const durationDays = selectedBanType === 'temporary' ? parseInt(durationInput.value) : null;
+            
+            try {
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Banning...';
+                
+                const response = await fetch('/api/groups/ban', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        groupId: currentGroupId,
+                        userEmail: userEmail,
+                        banType: selectedBanType,
+                        durationDays: durationDays
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    alert(`User ${username} has been banned successfully.`);
+                    document.body.removeChild(modalOverlay);
+                    // Refresh user list
+                    await pollUsers();
+                } else {
+                    alert(result.error || 'Failed to ban user');
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = 'Ban User';
+                }
+            } catch (error) {
+                debugLog(`ERROR banning user: ${error.message}`);
+                alert(`Error banning user: ${error.message}`);
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Ban User';
+            }
+        });
+        
+        // Close on overlay click
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                document.body.removeChild(modalOverlay);
+            }
+        });
+    }
 
     // Utility functions
     function escapeHTML(str) {

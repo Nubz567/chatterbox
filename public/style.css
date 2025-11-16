@@ -2127,6 +2127,70 @@ body.dark-theme #emoji-button:hover {
     background: #2980b9;
 }
 
+/* --- Ban User Button Styles --- */
+.ban-user-button {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.ban-user-button:hover {
+    background: #c0392b;
+    transform: scale(1.05);
+}
+
+.ban-user-button:active {
+    transform: scale(0.95);
+}
+
+/* Ban Modal Styles */
+#ban-modal-overlay {
+    font-family: Arial, sans-serif;
+}
+
+#ban-modal-overlay h3 {
+    color: #2c3e50;
+}
+
+#ban-modal-overlay label {
+    color: #34495e;
+    cursor: pointer;
+}
+
+#ban-modal-overlay input[type="radio"] {
+    margin-right: 8px;
+    cursor: pointer;
+}
+
+#ban-modal-overlay input[type="number"] {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+body.dark-theme #ban-modal-overlay > div {
+    background: #2c3e50;
+    color: #ecf0f1;
+}
+
+body.dark-theme #ban-modal-overlay h3 {
+    color: #ecf0f1;
+}
+
+body.dark-theme #ban-modal-overlay label {
+    color: #bdc3c7;
+}
+
+body.dark-theme #ban-modal-overlay input[type="number"] {
+    background: #34495e;
+    color: #ecf0f1;
+    border-color: #555;
+}
+
 /* Dark theme support for logout button */
 body.dark-theme .button-logout {
     background: linear-gradient(135deg, #c0392b, #a93226);
