@@ -626,7 +626,7 @@ window.addEventListener('load', () => {
     }
 
     // Display user list
-    function displayUsers(users) {
+    async function displayUsers(users) {
         try {
             if (!userList || !userListLoading) {
                 debugLog('ERROR: userList or userListLoading element not found');
@@ -648,7 +648,7 @@ window.addEventListener('load', () => {
             userList.appendChild(groupChatItem);
 
             // Add users
-            users.forEach(user => {
+            for (const user of users) {
                 const userItem = document.createElement('li');
                 userItem.className = 'user-item';
                 userItem.setAttribute('data-user-email', user.email);
@@ -658,28 +658,97 @@ window.addEventListener('load', () => {
                 
                 const userInfo = document.createElement('div');
                 userInfo.style.cssText = 'display: flex; align-items: center; gap: 8px; flex: 1;';
+                
+                // Check if user is banned
+                let isBanned = false;
+                let banInfo = null;
+                if (currentUserEmail === currentGroupAdminEmail && user.email !== currentUserEmail) {
+                    try {
+                        const banResponse = await fetch(`/api/groups/banned/${currentGroupId}/${user.email}`, {
+                            credentials: 'include'
+                        });
+                        if (banResponse.ok) {
+                            const banData = await banResponse.json();
+                            if (banData.banned) {
+                                isBanned = true;
+                                banInfo = banData;
+                            }
+                        }
+                    } catch (error) {
+                        debugLog(`Error checking ban status for ${user.email}: ${error.message}`);
+                    }
+                }
+                
+                // Add banned indicator to username if banned
+                const usernameText = isBanned 
+                    ? `${escapeHTML(user.username)} <span style="color: #e74c3c; font-size: 10px;">(Banned)</span>`
+                    : escapeHTML(user.username);
+                
                 userInfo.innerHTML = `
-                    <span class="user-name">${escapeHTML(user.username)}</span>
+                    <span class="user-name">${usernameText}</span>
                     <span class="online-status ${user.online ? 'online' : 'offline'}">●</span>
                 `;
                 userContent.appendChild(userInfo);
                 
-                // Add ban button if current user is admin and this is not the admin themselves
+                // Add ban/unban button if current user is admin and this is not the admin themselves
                 if (currentUserEmail === currentGroupAdminEmail && user.email !== currentUserEmail) {
-                    const banButton = document.createElement('button');
-                    banButton.className = 'ban-user-button';
-                    banButton.textContent = '🚫';
-                    banButton.title = 'Ban User';
-                    banButton.style.cssText = 'background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 8px;';
-                    banButton.addEventListener('click', () => {
-                        showBanModal(user.email, user.username);
-                    });
-                    userContent.appendChild(banButton);
+                    if (isBanned) {
+                        // Show unban button
+                        const unbanButton = document.createElement('button');
+                        unbanButton.className = 'unban-user-button';
+                        unbanButton.textContent = '✅';
+                        unbanButton.title = banInfo && banInfo.banType === 'temporary' && banInfo.expiresAt
+                            ? `Unban User (Expires: ${new Date(banInfo.expiresAt).toLocaleString()})`
+                            : 'Unban User';
+                        unbanButton.style.cssText = 'background: #27ae60; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 8px;';
+                        unbanButton.addEventListener('click', async () => {
+                            if (confirm(`Are you sure you want to unban ${user.username}?`)) {
+                                try {
+                                    const response = await fetch('/api/groups/unban', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json'
+                                        },
+                                        credentials: 'include',
+                                        body: JSON.stringify({
+                                            groupId: currentGroupId,
+                                            userEmail: user.email
+                                        })
+                                    });
+                                    
+                                    const result = await response.json();
+                                    
+                                    if (response.ok && result.success) {
+                                        alert(`User ${user.username} has been unbanned successfully.`);
+                                        // Refresh user list
+                                        await pollUsers();
+                                    } else {
+                                        alert(result.error || 'Failed to unban user');
+                                    }
+                                } catch (error) {
+                                    debugLog(`ERROR unbanning user: ${error.message}`);
+                                    alert(`Error unbanning user: ${error.message}`);
+                                }
+                            }
+                        });
+                        userContent.appendChild(unbanButton);
+                    } else {
+                        // Show ban button
+                        const banButton = document.createElement('button');
+                        banButton.className = 'ban-user-button';
+                        banButton.textContent = '🚫';
+                        banButton.title = 'Ban User';
+                        banButton.style.cssText = 'background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 8px;';
+                        banButton.addEventListener('click', () => {
+                            showBanModal(user.email, user.username);
+                        });
+                        userContent.appendChild(banButton);
+                    }
                 }
                 
                 userItem.appendChild(userContent);
                 userList.appendChild(userItem);
-            });
+            }
             
             debugLog('User list displayed successfully');
         } catch (error) {

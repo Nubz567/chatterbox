@@ -2148,6 +2148,27 @@ body.dark-theme #emoji-button:hover {
     transform: scale(0.95);
 }
 
+/* --- Unban User Button Styles --- */
+.unban-user-button {
+    background: #27ae60;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.unban-user-button:hover {
+    background: #229954;
+    transform: scale(1.05);
+}
+
+.unban-user-button:active {
+    transform: scale(0.95);
+}
+
 /* Ban Modal Styles */
 #ban-modal-overlay {
     font-family: Arial, sans-serif;
