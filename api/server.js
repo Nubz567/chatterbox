@@ -62,10 +62,13 @@ const messageSchema = new mongoose.Schema({
     user: { type: String, required: true },
     email: { type: String, required: true },
     text: { type: String, required: true },
-    messageType: { type: String, enum: ['text', 'image'], default: 'text' },
+    messageType: { type: String, enum: ['text', 'image', 'video'], default: 'text' },
     imageData: { type: String }, // Base64 encoded image data
     imageName: { type: String },
     imageSize: { type: Number },
+    videoData: { type: String }, // Base64 encoded video data
+    videoName: { type: String },
+    videoSize: { type: Number },
     timestamp: { type: Date, default: Date.now }
 });
  
@@ -791,7 +794,7 @@ app.post('/api/chat/send', async (req, res) => {
             return res.status(401).json({ error: 'Not authenticated' });
         }
 
-        const { message, groupId, messageType, imageData, imageName, imageSize } = req.body;
+        const { message, groupId, messageType, imageData, imageName, imageSize, videoData, videoName, videoSize } = req.body;
         console.log('Message data:', { 
             message: message?.substring(0, 50), 
             groupId, 
@@ -799,7 +802,11 @@ app.post('/api/chat/send', async (req, res) => {
             hasImageData: !!imageData,
             imageName,
             imageSize,
-            imageDataLength: imageData ? imageData.length : 0
+            imageDataLength: imageData ? imageData.length : 0,
+            hasVideoData: !!videoData,
+            videoName,
+            videoSize,
+            videoDataLength: videoData ? videoData.length : 0
         });
         
         if (!groupId) {
@@ -827,6 +834,26 @@ app.post('/api/chat/send', async (req, res) => {
             if (imageSize && imageSize > 5 * 1024 * 1024) { // 5MB limit for original file
                 console.log('ERROR: Original image file too large');
                 return res.status(400).json({ error: 'Image file size must be less than 5MB' });
+            }
+        } else if (messageType === 'video') {
+            if (!videoData || !videoName) {
+                console.log('ERROR: Missing video data or name');
+                return res.status(400).json({ error: 'Video data and name are required for video messages' });
+            }
+            
+            // Check Base64 data size (more restrictive than file size)
+            const base64Size = videoData.length;
+            const maxBase64Size = 10 * 1024 * 1024; // 10MB for Base64 data
+            console.log(`Video Base64 size: ${Math.round(base64Size / 1024)}KB`);
+            
+            if (base64Size > maxBase64Size) {
+                console.log(`ERROR: Video Base64 data too large: ${Math.round(base64Size / 1024 / 1024)}MB`);
+                return res.status(400).json({ error: 'Video is too large. Please try a smaller video.' });
+            }
+            
+            if (videoSize && videoSize > 5 * 1024 * 1024) { // 5MB limit for original file
+                console.log('ERROR: Original video file too large');
+                return res.status(400).json({ error: 'Video file size must be less than 5MB' });
             }
   } else {
             if (!message || message.trim() === '') {
@@ -865,6 +892,11 @@ app.post('/api/chat/send', async (req, res) => {
             messageObj.imageData = imageData;
             messageObj.imageName = imageName;
             messageObj.imageSize = imageSize;
+        } else if (messageType === 'video') {
+            messageObj.text = `🎥 ${videoName}`;
+            messageObj.videoData = videoData;
+            messageObj.videoName = videoName;
+            messageObj.videoSize = videoSize;
     } else {
             messageObj.text = message;
         }
@@ -919,6 +951,9 @@ app.post('/api/chat/send', async (req, res) => {
             imageData: newMessage.imageData,
             imageName: newMessage.imageName,
             imageSize: newMessage.imageSize,
+            videoData: newMessage.videoData,
+            videoName: newMessage.videoName,
+            videoSize: newMessage.videoSize,
             timestamp: newMessage.timestamp,
             groupId: newMessage.groupId
         };
@@ -969,7 +1004,7 @@ app.get('/api/chat/messages/:groupId', async (req, res) => {
         // Fetch messages from database with optimized query
         console.log('Fetching messages from database for groupId:', groupId);
         const messages = await Message.find({ groupId: groupId })
-            .select('_id user email text messageType imageData imageName imageSize timestamp groupId')
+            .select('_id user email text messageType imageData imageName imageSize videoData videoName videoSize timestamp groupId')
             .sort({ timestamp: 1 })
             .limit(MAX_MESSAGES)
             .lean();
@@ -986,6 +1021,9 @@ app.get('/api/chat/messages/:groupId', async (req, res) => {
             imageData: m.imageData,
             imageName: m.imageName,
             imageSize: m.imageSize,
+            videoData: m.videoData,
+            videoName: m.videoName,
+            videoSize: m.videoSize,
             timestamp: m.timestamp,
             groupId: m.groupId
         }));

@@ -33,6 +33,8 @@ window.addEventListener('load', () => {
     const messagesLoading = document.getElementById('messages-loading');
     const imageUploadButton = document.getElementById('image-upload-button');
     const imageInput = document.getElementById('image-input');
+    const videoUploadButton = document.getElementById('video-upload-button');
+    const videoInput = document.getElementById('video-input');
     const imageModal = document.getElementById('image-modal');
     const modalImage = document.getElementById('modal-image');
     const modalClose = document.querySelector('.image-modal-close');
@@ -53,6 +55,8 @@ window.addEventListener('load', () => {
         messagesLoading,
         imageUploadButton,
         imageInput,
+        videoUploadButton,
+        videoInput,
         imageModal,
         modalImage,
         modalClose,
@@ -217,13 +221,15 @@ window.addEventListener('load', () => {
     }
 
     // Send message with retry logic
-    async function sendMessage(message, imageData = null) {
+    async function sendMessage(message, imageData = null, videoData = null) {
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
-                const messageType = imageData ? 'image' : 'text';
+                const messageType = imageData ? 'image' : (videoData ? 'video' : 'text');
                 const logMessage = imageData ? 
                     `Sending image message (attempt ${attempt}/${MAX_RETRIES}): ${imageData.imageName}` :
-                    `Sending message (attempt ${attempt}/${MAX_RETRIES}): ${message.substring(0, 50)}...`;
+                    (videoData ? 
+                        `Sending video message (attempt ${attempt}/${MAX_RETRIES}): ${videoData.videoName}` :
+                        `Sending message (attempt ${attempt}/${MAX_RETRIES}): ${message.substring(0, 50)}...`);
                 
                 debugLog(logMessage);
                 
@@ -245,6 +251,21 @@ window.addEventListener('load', () => {
                         imageData: imageData.imageData,
                         imageName: imageData.imageName,
                         imageSize: imageData.imageSize
+                    });
+                } else if (videoData) {
+                    // Check if video data is too large for JSON request
+                    const videoDataSize = videoData.videoData.length;
+                    if (videoDataSize > 10 * 1024 * 1024) { // 10MB limit for JSON
+                        debugLog(`ERROR: Video data too large for JSON request: ${Math.round(videoDataSize / 1024 / 1024)}MB`);
+                        throw new Error('Video is too large. Please try a smaller video.');
+                    }
+                    
+                    // Send video message
+                    Object.assign(requestBody, {
+                        messageType: 'video',
+                        videoData: videoData.videoData,
+                        videoName: videoData.videoName,
+                        videoSize: videoData.videoSize
                     });
         } else {
                     // Send text message
@@ -425,6 +446,26 @@ window.addEventListener('load', () => {
                 imageNameSpan.textContent = messageData.imageName;
                 messageContentSpan.appendChild(imageNameSpan);
             }
+        } else if (messageData.messageType === 'video' && messageData.videoData) {
+            // Display video message
+            messageContentSpan.innerHTML = `${escapeHTML(messageData.user)}: `;
+            
+            const videoElement = document.createElement('video');
+            videoElement.src = messageData.videoData;
+            videoElement.controls = true;
+            videoElement.className = 'message-video';
+            videoElement.style.cssText = 'max-width: 100%; max-height: 400px; border-radius: 8px; margin-top: 5px;';
+            videoElement.title = messageData.videoName || 'Video';
+            
+            messageContentSpan.appendChild(videoElement);
+            
+            // Add video name below
+            if (messageData.videoName) {
+                const videoNameSpan = document.createElement('div');
+                videoNameSpan.style.cssText = 'font-size: 12px; color: #666; margin-top: 5px;';
+                videoNameSpan.textContent = messageData.videoName;
+                messageContentSpan.appendChild(videoNameSpan);
+            }
         } else {
             // Display text message
             messageContentSpan.innerHTML = `${escapeHTML(messageData.user)}: ${escapeHTML(messageData.text)}`;
@@ -559,6 +600,44 @@ window.addEventListener('load', () => {
             };
             
             img.src = base64Data;
+        });
+    }
+
+    // Handle video upload
+    function handleVideoUpload(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const base64Data = e.target.result;
+                const videoSize = file.size;
+                const videoName = file.name;
+                
+                // Validate file size (5MB limit)
+                if (videoSize > 5 * 1024 * 1024) {
+                    reject(new Error('Video size must be less than 5MB'));
+                    return;
+                }
+    
+                // Validate file type
+                if (!file.type.startsWith('video/')) {
+                    reject(new Error('Please select a valid video file'));
+                    return;
+                }
+                
+                debugLog(`Video processed: ${videoName} - Size: ${Math.round(videoSize / 1024)}KB`);
+                resolve({
+                    videoData: base64Data,
+                    videoName: videoName,
+                    videoSize: videoSize
+                });
+            };
+            
+            reader.onerror = function() {
+                reject(new Error('Failed to read video file'));
+            };
+            
+            reader.readAsDataURL(file);
         });
     }
 
@@ -858,6 +937,78 @@ window.addEventListener('load', () => {
                 imageUploadButton.textContent = originalText;
                 imageUploadButton.disabled = false;
                 imageInput.value = '';
+            }
+        });
+    }
+
+    // Handle video upload button
+    if (videoUploadButton && videoInput) {
+        debugLog('Setting up video upload button event listener');
+        videoUploadButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            debugLog('Video upload button clicked');
+            debugLog('Triggering file input click');
+            try {
+                videoInput.click();
+                debugLog('File input click triggered successfully');
+            } catch (error) {
+                debugLog(`ERROR triggering file input: ${error.message}`);
+            }
+        });
+        debugLog('Video upload button event listener set up successfully');
+    } else {
+        debugLog('ERROR: Video upload button or input not found');
+        debugLog(`videoUploadButton: ${!!videoUploadButton}, videoInput: ${!!videoInput}`);
+    }
+
+    if (videoInput) {
+        videoInput.addEventListener('change', async (e) => {
+            debugLog('Video input change event triggered');
+            const file = e.target.files[0];
+            if (!file) {
+                debugLog('No file selected');
+                return;
+            }
+            debugLog(`File selected: ${file.name}, size: ${file.size}, type: ${file.type}`);
+
+            try {
+                
+                // Show loading state
+                const originalText = videoUploadButton.textContent;
+                videoUploadButton.textContent = '⏳';
+                videoUploadButton.disabled = true;
+
+                // Process video
+                const videoData = await handleVideoUpload(file);
+                
+                // Send video message
+                const sentMessage = await sendMessage(null, null, videoData);
+                if (sentMessage) {
+                    debugLog('Video sent successfully');
+                    // Display immediately for instant feedback
+                    displayMessage(sentMessage);
+                    // Update lastMessageId to prevent duplicate from polling
+                    lastMessageId = sentMessage.id;
+                } else {
+                    debugLog('ERROR: Failed to send video');
+                    alert('Failed to send video. Please try again.');
+                }
+
+                // Reset button state
+                videoUploadButton.textContent = originalText;
+                videoUploadButton.disabled = false;
+                
+                // Clear file input
+                videoInput.value = '';
+                
+            } catch (error) {
+                debugLog(`ERROR uploading video: ${error.message}`);
+                alert(`Error uploading video: ${error.message}`);
+                
+                // Reset button state
+                videoUploadButton.textContent = originalText;
+                videoUploadButton.disabled = false;
+                videoInput.value = '';
             }
         });
     }
