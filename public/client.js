@@ -1440,22 +1440,33 @@ window.addEventListener('load', () => {
         contextMenu.appendChild(deleteOption);
         document.body.appendChild(contextMenu);
         
-        // Position menu near cursor
-        const x = event.clientX;
-        const y = event.clientY;
-        contextMenu.style.left = `${x}px`;
-        contextMenu.style.top = `${y}px`;
+        // Position menu next to the message item
+        const messageRect = messageItem.getBoundingClientRect();
+        const menuWidth = 150; // Approximate menu width
+        const menuHeight = 50; // Approximate menu height
+        
+        // Position to the right of the message, aligned with top
+        let x = messageRect.right + 10;
+        let y = messageRect.top;
         
         // Adjust if menu goes off screen
-        setTimeout(() => {
-            const rect = contextMenu.getBoundingClientRect();
-            if (rect.right > window.innerWidth) {
-                contextMenu.style.left = `${window.innerWidth - rect.width - 10}px`;
-            }
-            if (rect.bottom > window.innerHeight) {
-                contextMenu.style.top = `${window.innerHeight - rect.height - 10}px`;
-            }
-        }, 0);
+        if (x + menuWidth > window.innerWidth) {
+            // Position to the left of the message instead
+            x = messageRect.left - menuWidth - 10;
+        }
+        
+        if (y + menuHeight > window.innerHeight) {
+            // Adjust vertically if needed
+            y = window.innerHeight - menuHeight - 10;
+        }
+        
+        // Ensure menu doesn't go above viewport
+        if (y < 0) {
+            y = 10;
+        }
+        
+        contextMenu.style.left = `${x}px`;
+        contextMenu.style.top = `${y}px`;
         
         // Close menu when clicking outside
         const closeMenu = (e) => {
