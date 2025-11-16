@@ -1440,33 +1440,58 @@ window.addEventListener('load', () => {
         contextMenu.appendChild(deleteOption);
         document.body.appendChild(contextMenu);
         
-        // Position menu next to the message item
-        const messageRect = messageItem.getBoundingClientRect();
-        const menuWidth = 150; // Approximate menu width
-        const menuHeight = 50; // Approximate menu height
-        
-        // Position to the right of the message, aligned with top
-        let x = messageRect.right + 10;
-        let y = messageRect.top;
-        
-        // Adjust if menu goes off screen
-        if (x + menuWidth > window.innerWidth) {
-            // Position to the left of the message instead
-            x = messageRect.left - menuWidth - 10;
-        }
-        
-        if (y + menuHeight > window.innerHeight) {
-            // Adjust vertically if needed
-            y = window.innerHeight - menuHeight - 10;
-        }
-        
-        // Ensure menu doesn't go above viewport
-        if (y < 0) {
-            y = 10;
-        }
-        
-        contextMenu.style.left = `${x}px`;
-        contextMenu.style.top = `${y}px`;
+        // Wait for menu to be rendered to get actual dimensions
+        setTimeout(() => {
+            // Position menu next to the message item
+            const messageRect = messageItem.getBoundingClientRect();
+            const menuRect = contextMenu.getBoundingClientRect();
+            const menuWidth = menuRect.width;
+            const menuHeight = menuRect.height;
+            
+            // Determine position based on message alignment
+            // For "my-message" (right-aligned), show menu to the left
+            // For "other-message" (left-aligned), show menu to the right
+            const isMyMessage = messageItem.classList.contains('my-message');
+            let x, y;
+            
+            if (isMyMessage) {
+                // Position to the left of the message
+                x = messageRect.left - menuWidth - 10;
+            } else {
+                // Position to the right of the message
+                x = messageRect.right + 10;
+            }
+            
+            // Align vertically with the top of the message
+            y = messageRect.top;
+            
+            // Adjust if menu goes off screen horizontally
+            if (x < 10) {
+                // If too far left, position to the right instead
+                x = messageRect.right + 10;
+            }
+            if (x + menuWidth > window.innerWidth - 10) {
+                // If too far right, position to the left instead
+                x = messageRect.left - menuWidth - 10;
+                // If still off screen, position at screen edge
+                if (x < 10) {
+                    x = 10;
+                }
+            }
+            
+            // Adjust if menu goes off screen vertically
+            if (y + menuHeight > window.innerHeight - 10) {
+                // Position above if it would go below viewport
+                y = messageRect.bottom - menuHeight;
+            }
+            if (y < 10) {
+                // Ensure menu doesn't go above viewport
+                y = 10;
+            }
+            
+            contextMenu.style.left = `${x}px`;
+            contextMenu.style.top = `${y}px`;
+        }, 0);
         
         // Close menu when clicking outside
         const closeMenu = (e) => {
