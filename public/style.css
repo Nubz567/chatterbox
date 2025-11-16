@@ -1998,53 +1998,6 @@ body.dark-theme #username-display {
     box-shadow: none;
 }
 
-/* --- Video Upload Styles --- */
-#video-upload-button {
-    background: #e74c3c;
-    color: white;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: all 0.3s ease;
-    margin-right: 5px;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-#video-upload-button:hover {
-    background: #c0392b;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-#video-upload-button:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-#video-upload-button:disabled {
-    background: #bdc3c7;
-    color: #95a5a6;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-}
-
-/* Video message styles */
-.message-video {
-    max-width: 100%;
-    max-height: 400px;
-    border-radius: 8px;
-    margin-top: 5px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
 /* Image preview styles */
 .image-preview {
     max-width: 200px;
@@ -2164,14 +2117,6 @@ body.dark-theme #image-upload-button {
 
 body.dark-theme #image-upload-button:hover {
     background: #2980b9;
-}
-
-body.dark-theme #video-upload-button {
-    background: #e74c3c;
-}
-
-body.dark-theme #video-upload-button:hover {
-    background: #c0392b;
 }
 
 body.dark-theme #emoji-button {

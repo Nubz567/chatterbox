@@ -33,8 +33,6 @@ window.addEventListener('load', () => {
     const messagesLoading = document.getElementById('messages-loading');
     const imageUploadButton = document.getElementById('image-upload-button');
     const imageInput = document.getElementById('image-input');
-    const videoUploadButton = document.getElementById('video-upload-button');
-    const videoInput = document.getElementById('video-input');
     const imageModal = document.getElementById('image-modal');
     const modalImage = document.getElementById('modal-image');
     const modalClose = document.querySelector('.image-modal-close');
@@ -55,8 +53,6 @@ window.addEventListener('load', () => {
         messagesLoading,
         imageUploadButton,
         imageInput,
-        videoUploadButton,
-        videoInput,
         imageModal,
         modalImage,
         modalClose,
@@ -221,15 +217,13 @@ window.addEventListener('load', () => {
     }
 
     // Send message with retry logic
-    async function sendMessage(message, imageData = null, videoData = null) {
+    async function sendMessage(message, imageData = null) {
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             try {
-                const messageType = imageData ? 'image' : (videoData ? 'video' : 'text');
+                const messageType = imageData ? 'image' : 'text';
                 const logMessage = imageData ? 
                     `Sending image message (attempt ${attempt}/${MAX_RETRIES}): ${imageData.imageName}` :
-                    (videoData ? 
-                        `Sending video message (attempt ${attempt}/${MAX_RETRIES}): ${videoData.videoName}` :
-                        `Sending message (attempt ${attempt}/${MAX_RETRIES}): ${message ? message.substring(0, 50) : '(empty)'}...`);
+                    `Sending message (attempt ${attempt}/${MAX_RETRIES}): ${message ? message.substring(0, 50) : '(empty)'}...`;
                 
                 debugLog(logMessage);
                 
@@ -252,21 +246,6 @@ window.addEventListener('load', () => {
                         imageName: imageData.imageName,
                         imageSize: imageData.imageSize
                     });
-                } else if (videoData) {
-                    // Check if video data is too large for JSON request
-                    const videoDataSize = videoData.videoData.length;
-                    if (videoDataSize > 150 * 1024 * 1024) { // 150MB limit for JSON (100MB file becomes ~133MB Base64)
-                        debugLog(`ERROR: Video data too large for JSON request: ${Math.round(videoDataSize / 1024 / 1024)}MB`);
-                        throw new Error('Video is too large. Please try a smaller video.');
-                    }
-                    
-                    // Send video message
-                    Object.assign(requestBody, {
-                        messageType: 'video',
-                        videoData: videoData.videoData,
-                        videoName: videoData.videoName,
-                        videoSize: videoData.videoSize
-                    });
         } else {
                     // Send text message
                     Object.assign(requestBody, {
@@ -277,14 +256,10 @@ window.addEventListener('load', () => {
                 
                 // Log request body without the actual data to avoid console issues with large files
                 const logBody = { ...requestBody };
-                if (logBody.videoData) {
-                    logBody.videoData = `[Video Data: ${Math.round(logBody.videoData.length / 1024)}KB]`;
-                }
                 if (logBody.imageData) {
                     logBody.imageData = `[Image Data: ${Math.round(logBody.imageData.length / 1024)}KB]`;
                 }
                 console.log('Sending request body:', logBody);
-                debugLog(`Stringifying request body (video data size: ${videoData ? Math.round(videoData.videoData.length / 1024 / 1024) : 0}MB)...`);
                 
                 let requestBodyString;
                 try {
@@ -295,35 +270,65 @@ window.addEventListener('load', () => {
                     throw new Error('Failed to prepare video for sending. The video might be too large.');
                 }
                 
-                const response = await fetch('/api/chat/send', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Cache-Control': 'no-cache'
-                    },
-                    body: requestBodyString,
-                    credentials: 'include'
-                });
+                debugLog(`Making fetch request to /api/chat/send (attempt ${attempt})...`);
+                debugLog(`Request body size: ${Math.round(requestBodyString.length / 1024 / 1024)}MB`);
+                
+                let response;
+                try {
+                    response = await fetch('/api/chat/send', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Cache-Control': 'no-cache'
+                        },
+                        body: requestBodyString,
+                        credentials: 'include'
+                    });
+                } catch (fetchError) {
+                    debugLog(`ERROR: Fetch request failed: ${fetchError.message}`);
+                    debugLog(`Error stack: ${fetchError.stack}`);
+                    throw new Error(`Network error: ${fetchError.message}`);
+                }
 
+                debugLog(`Response received - Status: ${response.status}, OK: ${response.ok}`);
+                
                 if (response.ok) {
-                    const result = await response.json();
-                    debugLog('Message sent successfully:', result);
-                    return result.message;
-        } else {
-                    const errorText = await response.text();
-                    debugLog(`ERROR: Failed to send message - Status: ${response.status}, Response: ${errorText}`);
+                    try {
+                        const result = await response.json();
+                        debugLog('Message sent successfully:', result);
+                        if (result.message) {
+                            return result.message;
+                        } else {
+                            debugLog('ERROR: Response missing message field:', result);
+                            throw new Error('Server response missing message data');
+                        }
+                    } catch (parseError) {
+                        debugLog(`ERROR: Failed to parse response JSON: ${parseError.message}`);
+                        throw new Error('Failed to parse server response');
+                    }
+                } else {
+                    let errorText = '';
+                    try {
+                        errorText = await response.text();
+                        debugLog(`ERROR: Failed to send message - Status: ${response.status}, Response: ${errorText}`);
+                    } catch (textError) {
+                        debugLog(`ERROR: Failed to read error response text: ${textError.message}`);
+                        errorText = `HTTP ${response.status} Error`;
+                    }
+                    
                     if (attempt === MAX_RETRIES) {
                         debugLog('ERROR: Max retries reached for message send');
-                        return null;
+                        throw new Error(`Failed to send: ${errorText}`);
                     }
                     await new Promise(resolve => setTimeout(resolve, 500 * attempt));
                 }
             } catch (error) {
                 debugLog(`ERROR sending message (attempt ${attempt}): ${error.message}`);
-                                if (attempt === MAX_RETRIES) {
+                debugLog(`Error stack: ${error.stack}`);
+                if (attempt === MAX_RETRIES) {
                     debugLog('ERROR: Max retries reached for message send');
-            return null;
-        }
+                    throw error; // Re-throw to be caught by caller
+                }
                 await new Promise(resolve => setTimeout(resolve, 500 * attempt));
             }
         }
@@ -354,7 +359,7 @@ window.addEventListener('load', () => {
                     const messages = data.messages || [];
                     debugLog(`Messages fetched successfully: ${messages.length} messages`);
                     return messages;
-                } else {
+        } else {
                     debugLog(`ERROR: Failed to fetch messages - Status: ${response.status}`);
                     if (attempt === MAX_RETRIES) {
                         debugLog('ERROR: Max retries reached for messages fetch');
@@ -426,7 +431,7 @@ window.addEventListener('load', () => {
         }
 
             debugLog(`Displaying message: ${messageData.user}: ${messageData.text.substring(0, 30)}...`);
-        
+
         const item = document.createElement('li');
             const date = new Date(messageData.timestamp);
         const hours = date.getHours().toString().padStart(2, '0');
@@ -464,26 +469,6 @@ window.addEventListener('load', () => {
                 imageNameSpan.style.cssText = 'font-size: 12px; color: #666; margin-top: 5px;';
                 imageNameSpan.textContent = messageData.imageName;
                 messageContentSpan.appendChild(imageNameSpan);
-            }
-        } else if (messageData.messageType === 'video' && messageData.videoData) {
-            // Display video message
-            messageContentSpan.innerHTML = `${escapeHTML(messageData.user)}: `;
-            
-            const videoElement = document.createElement('video');
-            videoElement.src = messageData.videoData;
-            videoElement.controls = true;
-            videoElement.className = 'message-video';
-            videoElement.style.cssText = 'max-width: 100%; max-height: 400px; border-radius: 8px; margin-top: 5px;';
-            videoElement.title = messageData.videoName || 'Video';
-            
-            messageContentSpan.appendChild(videoElement);
-            
-            // Add video name below
-            if (messageData.videoName) {
-                const videoNameSpan = document.createElement('div');
-                videoNameSpan.style.cssText = 'font-size: 12px; color: #666; margin-top: 5px;';
-                videoNameSpan.textContent = messageData.videoName;
-                messageContentSpan.appendChild(videoNameSpan);
             }
         } else {
             // Display text message
@@ -619,44 +604,6 @@ window.addEventListener('load', () => {
             };
             
             img.src = base64Data;
-        });
-    }
-
-    // Handle video upload
-    function handleVideoUpload(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            
-            reader.onload = function(e) {
-                const base64Data = e.target.result;
-                const videoSize = file.size;
-                const videoName = file.name;
-                
-                // Validate file size (100MB limit)
-                if (videoSize > 100 * 1024 * 1024) {
-                    reject(new Error('Video size must be less than 100MB'));
-                    return;
-                }
-    
-                // Validate file type
-                if (!file.type.startsWith('video/')) {
-                    reject(new Error('Please select a valid video file'));
-                    return;
-                }
-                
-                debugLog(`Video processed: ${videoName} - Size: ${Math.round(videoSize / 1024)}KB`);
-                resolve({
-                    videoData: base64Data,
-                    videoName: videoName,
-                    videoSize: videoSize
-                });
-            };
-            
-            reader.onerror = function() {
-                reject(new Error('Failed to read video file'));
-            };
-            
-            reader.readAsDataURL(file);
         });
     }
 
@@ -960,93 +907,6 @@ window.addEventListener('load', () => {
         });
     }
 
-    // Handle video upload button
-    if (videoUploadButton && videoInput) {
-        debugLog('Setting up video upload button event listener');
-        videoUploadButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            debugLog('Video upload button clicked');
-            debugLog('Triggering file input click');
-            try {
-                videoInput.click();
-                debugLog('File input click triggered successfully');
-            } catch (error) {
-                debugLog(`ERROR triggering file input: ${error.message}`);
-            }
-        });
-        debugLog('Video upload button event listener set up successfully');
-    } else {
-        debugLog('ERROR: Video upload button or input not found');
-        debugLog(`videoUploadButton: ${!!videoUploadButton}, videoInput: ${!!videoInput}`);
-    }
-
-    if (videoInput) {
-        videoInput.addEventListener('change', async (e) => {
-            debugLog('Video input change event triggered');
-            const file = e.target.files[0];
-            if (!file) {
-                debugLog('No file selected');
-                return;
-            }
-            debugLog(`File selected: ${file.name}, size: ${file.size}, type: ${file.type}`);
-
-            try {
-                if (!videoUploadButton) {
-                    throw new Error('Video upload button not found');
-                }
-                
-                // Show loading state
-                const originalText = videoUploadButton.textContent || '🎥';
-                videoUploadButton.textContent = '⏳';
-                videoUploadButton.disabled = true;
-
-                // Process video
-                debugLog(`Processing video: ${file.name} (${Math.round(file.size / 1024 / 1024)}MB)`);
-                const videoData = await handleVideoUpload(file);
-                debugLog(`Video processed successfully. Base64 size: ${Math.round(videoData.videoData.length / 1024 / 1024)}MB`);
-                
-                // Send video message
-                debugLog('Sending video message to server...');
-                const sentMessage = await sendMessage(null, null, videoData);
-                if (sentMessage) {
-                    debugLog('Video sent successfully');
-                    // Display immediately for instant feedback
-                    displayMessage(sentMessage);
-                    // Update lastMessageId to prevent duplicate from polling
-                    lastMessageId = sentMessage.id;
-                } else {
-                    debugLog('ERROR: Failed to send video - sendMessage returned null');
-                    alert('Failed to send video. Please try again.');
-                }
-
-                // Reset button state
-                if (videoUploadButton) {
-                    videoUploadButton.textContent = originalText;
-                    videoUploadButton.disabled = false;
-                }
-                
-                // Clear file input
-                if (videoInput) {
-                    videoInput.value = '';
-                }
-                
-            } catch (error) {
-                debugLog(`ERROR uploading video: ${error.message}`);
-                debugLog(`Error stack: ${error.stack}`);
-                alert(`Error uploading video: ${error.message}`);
-                
-                // Reset button state
-                if (videoUploadButton) {
-                    videoUploadButton.textContent = '🎥';
-                    videoUploadButton.disabled = false;
-                }
-                if (videoInput) {
-                    videoInput.value = '';
-                }
-            }
-        });
-    }
-
     // Handle image modal
     if (modalClose) {
         modalClose.addEventListener('click', closeImageModal);
@@ -1261,7 +1121,7 @@ window.addEventListener('load', () => {
                     if (messagesList) messagesList.style.display = 'block';
                     
                     debugLog(`Refresh complete. Loaded ${messages.length} messages one by one. Last ID: ${lastMessageId}`);
-        } else {
+    } else {
                     // Just hide loading indicator if no messages
                     if (messagesLoading) messagesLoading.style.display = 'none';
                     if (messagesList) messagesList.style.display = 'block';
@@ -1360,7 +1220,7 @@ window.addEventListener('load', () => {
                     
                     messagesLoaded = true;
                     break;
-                } catch (error) {
+            } catch (error) {
                     debugLog(`Failed to load messages (attempt ${attempt}): ${error.message}`);
                     if (attempt < 3) {
                         await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
